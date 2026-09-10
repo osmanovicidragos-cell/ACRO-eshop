@@ -111,17 +111,18 @@
         // produs (jsonConfig incomplet), cardul revine automat la lista din
         // short_description (fallback existent, extractSpecs()).
 
-        // Completare opțională, în fundal: pe lângă specFields (deja suficient
-        // de complet pentru majoritatea produselor), poți încerca și un fetch
-        // direct al paginii de produs (SKU), pentru cazul rar în care fișa
-        // tehnică de-acolo are date suplimentare care nu apar deloc în
-        // jsonConfig-ul paginii de listare. Dezactivat implicit, ca să nu
-        // facem cereri de rețea inutile — activează-l doar dacă chiar ai
-        // nevoie de date suplimentare de pe pagina produsului.
+        // IMPORTANT: nu toate produsele au jsonConfig pe pagina de listare —
+        // doar produsele CONFIGURABILE (cu variante de culoare/memorie/etc.)
+        // au blocul swatch-renderer cu toate datele de mai sus. Produsele
+        // SIMPLE (fără variante) nu au NICIUN fel de date tehnice pe pagina
+        // de listare — nici procesor, nici model, nici specificații. Pentru
+        // acelea, singura sursă posibilă e chiar pagina produsului (SKU),
+        // printr-un fetch în fundal. De-aia acest flag e activat implicit.
         // Selectoarele folosite sunt în parseSpecsFromDoc() mai jos; dacă nu
         // prind nimic pe pagina reală de produs, ajustează-le acolo după ce
-        // inspectezi codul HTML al unei pagini SKU.
-        specsFromPdp: false,
+        // inspectezi codul HTML al unei pagini SKU (vezi comentariul de la
+        // parseSpecsFromDoc).
+        specsFromPdp: true,
         // Câte linii de specificații păstrăm după completare
         specsFromPdpLimit: 12
     };
