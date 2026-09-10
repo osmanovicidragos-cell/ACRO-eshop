@@ -635,58 +635,90 @@
 }\n\
 .ssfx *,.ssfx *::before,.ssfx *::after{ box-sizing:border-box; }\n\
 \n\
-/* Tab-uri familii */\n\
-.ssfx .fam-tabs{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:1200px; margin:0 auto 40px; }\n\
-.ssfx .fam-btn{\n\
+/* Tab-uri familii — control segmentat, stil Apple (capsulă gri cu segment activ alb) */\n\
+.ssfx .fam-tabs{\n\
+    display:flex;\n\
+    flex-wrap:wrap;\n\
+    gap:2px;\n\
+    justify-content:center;\n\
+    width:fit-content;\n\
+    max-width:100%;\n\
+    margin:0 auto 36px;\n\
+    padding:4px;\n\
     background:var(--ssfx-badge-bg);\n\
-    border:1px solid transparent;\n\
-    color:var(--ssfx-text);\n\
-    padding:10px 22px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
+}\n\
+.ssfx .fam-btn{\n\
+    background:transparent;\n\
+    border:none;\n\
+    color:var(--ssfx-text-muted);\n\
+    padding:9px 20px;\n\
+    border-radius:calc(var(--ssfx-radius-chip) - 2px);\n\
     cursor:pointer;\n\
-    font-size:15px;\n\
+    font-size:14.5px;\n\
     font-weight:500;\n\
     transition:var(--ssfx-transition);\n\
     display:inline-flex;\n\
     align-items:center;\n\
     gap:8px;\n\
+    white-space:nowrap;\n\
 }\n\
-.ssfx .fam-btn:hover{ background:#ececf0; }\n\
-.ssfx .fam-btn.active{ background:var(--ssfx-text); color:#fff; }\n\
+.ssfx .fam-btn:hover{ color:var(--ssfx-text); }\n\
+.ssfx .fam-btn.active{ background:var(--ssfx-card-bg); color:var(--ssfx-text); box-shadow:0 1px 4px rgba(0,0,0,.14); }\n\
 .ssfx .fam-count{ font-size:11px; background:rgba(0,0,0,.08); color:inherit; padding:1px 8px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
-.ssfx .fam-btn.active .fam-count{ background:rgba(255,255,255,.22); }\n\
+.ssfx .fam-btn.active .fam-count{ background:rgba(0,0,0,.08); }\n\
 \n\
-/* Bara de filtre */\n\
+/* Bara de filtre — grupuri separate prin linii subțiri, etichete discrete */\n\
 .ssfx .filt{\n\
     display:flex;\n\
     flex-wrap:wrap;\n\
-    gap:14px 26px;\n\
+    row-gap:18px;\n\
     align-items:center;\n\
     justify-content:center;\n\
     max-width:1200px;\n\
     margin:0 auto 48px;\n\
-    padding:18px 22px;\n\
+    padding:8px 24px;\n\
     background:var(--ssfx-card-bg);\n\
     border:1px solid var(--ssfx-border);\n\
     border-radius:20px;\n\
 }\n\
-.ssfx .filt-group{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }\n\
-.ssfx .filt-label{ font-size:12px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.02em; }\n\
+.ssfx .filt-group{\n\
+    display:flex;\n\
+    align-items:center;\n\
+    gap:10px;\n\
+    flex-wrap:wrap;\n\
+    padding:14px 20px;\n\
+    border-left:1px solid var(--ssfx-border);\n\
+}\n\
+.ssfx .filt-group:first-child{ border-left:none; padding-left:0; }\n\
+.ssfx .filt-label{ font-size:11px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.05em; text-transform:uppercase; }\n\
 .ssfx .chip{\n\
     background:var(--ssfx-badge-bg);\n\
     border:1px solid transparent;\n\
     color:var(--ssfx-text);\n\
-    padding:7px 16px;\n\
+    padding:6px 15px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
     cursor:pointer;\n\
     font-size:13px;\n\
     font-weight:500;\n\
     transition:var(--ssfx-transition);\n\
+    white-space:nowrap;\n\
 }\n\
 .ssfx .chip:hover{ background:#ececf0; }\n\
 .ssfx .chip.active{ background:var(--ssfx-accent); color:#fff; }\n\
-.ssfx .filt-reset{ background:transparent; border:none; color:var(--ssfx-accent); font-size:13px; font-weight:500; cursor:pointer; }\n\
-.ssfx .filt-reset:hover{ text-decoration:underline; }\n\
+.ssfx .filt-reset{\n\
+    background:var(--ssfx-badge-bg);\n\
+    border:none;\n\
+    color:var(--ssfx-text-muted);\n\
+    font-size:12.5px;\n\
+    font-weight:500;\n\
+    cursor:pointer;\n\
+    padding:8px 18px;\n\
+    border-radius:var(--ssfx-radius-chip);\n\
+    margin-left:6px;\n\
+    transition:var(--ssfx-transition);\n\
+}\n\
+.ssfx .filt-reset:hover{ background:#ececf0; color:var(--ssfx-text); }\n\
 \n\
 /* Grid + card */\n\
 .ssfx .product-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--ssfx-gap-grid); max-width:1200px; margin:0 auto; }\n\
@@ -789,7 +821,10 @@
     .ssfx{ padding:40px 16px 48px; }\n\
     .ssfx .product-grid{ grid-template-columns:1fr; }\n\
     .ssfx .fam-btn{ padding:9px 16px; font-size:13.5px; }\n\
-    .ssfx .filt{ padding:16px; }\n\
+    .ssfx .filt{ justify-content:flex-start; padding:10px 18px; }\n\
+    .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:14px 0; }\n\
+    .ssfx .filt-group:first-child{ border-top:none; }\n\
+    .ssfx .filt-reset{ margin:6px 0 4px; }\n\
 }\n\
 ';
 
