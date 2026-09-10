@@ -71,7 +71,19 @@
             { key: '12000-99999999', label: '12.000+' }
         ],
         // Prag: dacă reducerea >= această valoare, cardul primește "is-hero" (cea mai mare reducere din familie)
-        heroMarksTopDiscount: true
+        heroMarksTopDiscount: true,
+
+        // Completează specificațiile din card cu fișa tehnică COMPLETĂ de pe
+        // pagina produsului (SKU), printr-un fetch în fundal, pe lângă lista
+        // scurtă deja disponibilă din pagina de listare. Dacă fetch-ul eșuează
+        // sau structura paginii de produs nu e recunoscută, cardul rămâne cu
+        // specificațiile scurte deja afișate — nimic nu se strică.
+        // Selectoarele folosite sunt în parseSpecsFromDoc() mai jos; dacă nu
+        // prind nimic pe pagina reală de produs, ajustează-le acolo după ce
+        // inspectezi codul HTML al unei pagini SKU.
+        specsFromPdp: true,
+        // Câte linii de specificații păstrăm după completare
+        specsFromPdpLimit: 12
     };
 
     /* ---------------------------------------------------------------------- */
@@ -222,6 +234,104 @@
             if (t) out.push(t);
         }
         return out;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  SPECIFICAȚII COMPLETE DE PE PAGINA PRODUSULUI (SKU)                    */
+    /*  Pagina de listare oferă doar o listă scurtă (short_description).       */
+    /*  Aici încercăm să citim fișa tehnică COMPLETĂ direct din HTML-ul        */
+    /*  paginii de produs, prin fetch în fundal. Magento generează de obicei   */
+    /*  un tabel standard de "Specificații tehnice" / "Additional Information" */
+    /*  — încercăm mai multe tipare cunoscute, în ordine, și renunțăm tăcut    */
+    /*  dacă nu recunoaștem structura paginii (cardul rămâne cu ce avea).      */
+    /* ---------------------------------------------------------------------- */
+    function parseSpecsFromDoc(doc) {
+        var out = [];
+
+        // 1) Tabelul standard Magento de specificații ("Additional Information")
+        var table = doc.querySelector(
+            '#product-attribute-specs-table, ' +
+            'table.additional-attributes, ' +
+            'table.data.table.additional-attributes, ' +
+            '.product.attribute.specs table'
+        );
+        if (table) {
+            table.querySelectorAll('tr').forEach(function (tr) {
+                var th = tr.querySelector('th, .col.label, .label');
+                var td = tr.querySelector('td, .col.data, .data');
+                var label = th ? th.textContent.replace(/\s+/g, ' ').trim() : '';
+                var val = td ? td.textContent.replace(/\s+/g, ' ').trim() : '';
+                if (label && val) out.push(label + ': ' + val);
+            });
+        }
+
+        // 2) Listă de tip definiție (dt/dd), folosită uneori pentru fișa tehnică
+        if (!out.length) {
+            var dl = doc.querySelector('.product-specs dl, .specifications dl, .product-attributes dl, .tech-specs dl');
+            if (dl) {
+                dl.querySelectorAll('dt').forEach(function (dt) {
+                    var dd = dt.nextElementSibling;
+                    if (dd && /^dd$/i.test(dd.tagName)) {
+                        var label = dt.textContent.replace(/\s+/g, ' ').trim();
+                        var val = dd.textContent.replace(/\s+/g, ' ').trim();
+                        if (label && val) out.push(label + ': ' + val);
+                    }
+                });
+            }
+        }
+
+        // 3) Fallback: listă simplă <li> din descrierea / fișa produsului
+        if (!out.length) {
+            doc.querySelectorAll(
+                '.product.attribute.description li, ' +
+                '.product-info-main .description li, ' +
+                '.pdp-description li, ' +
+                '.product-specs li, ' +
+                '.tech-specs li'
+            ).forEach(function (li) {
+                var t = li.textContent.replace(/\s+/g, ' ').trim();
+                if (t) out.push(t);
+            });
+        }
+
+        return out;
+    }
+
+    // Completează un card cu specificațiile de pe pagina produsului (SKU),
+    // printr-un fetch asincron pe același domeniu. Rulează în fundal, după ce
+    // cardul e deja afișat cu specificațiile scurte — dacă fetch-ul eșuează
+    // sau nu găsește nimic recunoscut, nu schimbă nimic (fallback sigur).
+    function upgradeCardSpecs(card, url) {
+        if (!url || url === '#' || typeof fetch !== 'function' || typeof DOMParser === 'undefined') return;
+
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (res) { return res && res.ok ? res.text() : null; })
+            .then(function (html) {
+                if (!html) return;
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var specs = parseSpecsFromDoc(doc);
+                if (!specs.length) return;
+
+                var wrap = card.querySelector('.product-specs');
+                var list = card.querySelector('.specs-list');
+
+                if (!wrap) {
+                    wrap = el('div', 'product-specs');
+                    list = el('ul', 'specs-list');
+                    wrap.appendChild(list);
+                    var actions = card.querySelector('.actions-row');
+                    if (actions) card.insertBefore(wrap, actions); else card.appendChild(wrap);
+                }
+
+                list.innerHTML = '';
+                specs.slice(0, CFG.specsFromPdpLimit).forEach(function (s) {
+                    list.appendChild(el('li', null, s));
+                });
+                if (specs.length > 4 && !wrap.querySelector('.show-more-btn')) {
+                    wrap.appendChild(el('div', 'show-more-btn', 'Arată mai mult ▾'));
+                }
+            })
+            .catch(function () { /* păstrăm liniștit specificațiile deja afișate */ });
     }
 
     /* ---------------------------------------------------------------------- */
@@ -462,6 +572,11 @@
             }
         }
         card.appendChild(actions);
+
+        // Completează specificațiile scurte cu fișa tehnică de pe pagina produsului
+        if (CFG.specsFromPdp) {
+            upgradeCardSpecs(card, p.url);
+        }
 
         return card;
     }
