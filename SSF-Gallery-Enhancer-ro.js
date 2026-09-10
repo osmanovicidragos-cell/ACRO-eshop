@@ -882,7 +882,7 @@
     -webkit-font-smoothing:antialiased;\n\
     background:var(--ssfx-page-bg);\n\
     color:var(--ssfx-text);\n\
-    padding:56px 22px 64px;\n\
+    padding:22px 22px 64px;\n\
     max-width:100%;\n\
     box-sizing:border-box;\n\
 }\n\
@@ -930,22 +930,22 @@
 .ssfx .filt{\n\
     display:flex;\n\
     flex-wrap:wrap;\n\
-    row-gap:18px;\n\
+    row-gap:8px;\n\
     align-items:center;\n\
     justify-content:center;\n\
     max-width:1200px;\n\
-    margin:0 auto 48px;\n\
-    padding:8px 24px;\n\
+    margin:0 auto 28px;\n\
+    padding:2px 20px;\n\
     background:var(--ssfx-card-bg);\n\
     border:1px solid var(--ssfx-border);\n\
-    border-radius:20px;\n\
+    border-radius:16px;\n\
 }\n\
 .ssfx .filt-group{\n\
     display:flex;\n\
     align-items:center;\n\
-    gap:10px;\n\
+    gap:8px;\n\
     flex-wrap:wrap;\n\
-    padding:14px 20px;\n\
+    padding:8px 16px;\n\
     border-left:1px solid var(--ssfx-border);\n\
 }\n\
 .ssfx .filt-group:first-child{ border-left:none; padding-left:0; }\n\
@@ -954,7 +954,7 @@
     background:var(--ssfx-badge-bg);\n\
     border:1px solid transparent;\n\
     color:var(--ssfx-text);\n\
-    padding:6px 15px;\n\
+    padding:4px 12px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
     cursor:pointer;\n\
     font-size:14px;\n\
@@ -971,7 +971,7 @@
     font-size:13.5px;\n\
     font-weight:500;\n\
     cursor:pointer;\n\
-    padding:8px 18px;\n\
+    padding:5px 14px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
     margin-left:6px;\n\
     transition:var(--ssfx-transition);\n\
@@ -1091,13 +1091,13 @@
 \n\
 /* Responsive */\n\
 @media(max-width:767px){\n\
-    .ssfx{ padding:40px 16px 48px; }\n\
+    .ssfx{ padding:18px 16px 48px; }\n\
     .ssfx .product-grid{ grid-template-columns:1fr; }\n\
     .ssfx .fam-tabs{ justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:22px; padding:0 18px; scrollbar-width:none; }\n\
     .ssfx .fam-tabs::-webkit-scrollbar{ display:none; }\n\
     .ssfx .fam-btn{ padding:14px 2px; font-size:13px; }\n\
-    .ssfx .filt{ justify-content:flex-start; padding:10px 18px; }\n\
-    .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:14px 0; }\n\
+    .ssfx .filt{ justify-content:flex-start; padding:6px 16px; }\n\
+    .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:8px 0; }\n\
     .ssfx .filt-group:first-child{ border-top:none; }\n\
     .ssfx .filt-reset{ margin:6px 0 4px; }\n\
 }\n\
