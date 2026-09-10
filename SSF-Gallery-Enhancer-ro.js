@@ -78,6 +78,17 @@
         // cu header-ul propriu al paginii.
         stickyFamNav: true,
 
+        // Iconiță opțională lângă numele fiecărei familii, în meniul de sus.
+        // Cheia trebuie să fie EXACT numele familiei/tab-ului (cum apare pe
+        // pagină, ex. "Vivobook", "ROG"), iar valoarea, URL-ul unei imagini
+        // mici (pătrată, ideal 40x40px+). Familiile care nu au o intrare aici
+        // rămân fără iconiță — nimic nu se strică dacă lista e goală. Exemplu:
+        // familyIcons: {
+        //     'Vivobook': 'https://ro.store.asus.com/media/.../vivobook-icon.png',
+        //     'ROG':      'https://ro.store.asus.com/media/.../rog-icon.png'
+        // }
+        familyIcons: {},
+
         // Câte modele (produsul are, pe lângă procesor/memorie, mult mai multe
         // atribute deja disponibile pe pagina de listare — stocare, placă
         // video, afișaj, baterie, garanție etc. — în același jsonConfig al
@@ -166,10 +177,10 @@
         '--ssfx-cpu-amd':        '#ed1c24',
         '--ssfx-cpu-snapdragon': '#7c1dd8',
 
-        /* Meniul de sus (stil Apple: bară închisă la culoare, translucidă) */
-        '--ssfx-nav-bg':          'rgba(29,29,31,.92)', // fundal bară meniu
-        '--ssfx-nav-text':        'rgba(255,255,255,.72)', // text meniu, stare normală
-        '--ssfx-nav-text-active': '#ffffff', // text meniu, activ / hover
+        /* Meniul de sus (stil Apple, dar cu fundal alb și text negru) */
+        '--ssfx-nav-bg':          'rgba(255,255,255,.92)', // fundal bară meniu
+        '--ssfx-nav-text':        'rgba(29,29,31,.64)', // text meniu, stare normală
+        '--ssfx-nav-text-active': '#1d1d1f', // text meniu, activ / hover
 
         /* Colțuri rotunjite */
         '--ssfx-radius-card':   '22px',
@@ -668,8 +679,11 @@
         // --- Tab-uri familii ---
         var famTabs = el('div', 'fam-tabs');
         families.forEach(function (fam, i) {
+            // Iconiță opțională lângă numele familiei — vezi CFG.familyIcons
+            var iconUrl = CFG.familyIcons[fam.name];
+            var iconHtml = iconUrl ? '<img class="fam-icon" src="' + iconUrl + '" alt="">' : '';
             var b = el('button', 'fam-btn' + (i === 0 ? ' active' : ''),
-                fam.name + ' <span class="fam-count">' + fam.cards.length + '</span>');
+                iconHtml + fam.name + ' <span class="fam-count">' + fam.cards.length + '</span>');
             b.setAttribute('data-family', fam.name);
             famTabs.appendChild(b);
         });
@@ -884,6 +898,7 @@
     margin:0 auto 40px;\n\
     padding:0 28px;\n\
     background:var(--ssfx-nav-bg);\n\
+    border:1px solid var(--ssfx-border);\n\
     -webkit-backdrop-filter:blur(20px) saturate(180%);\n\
     backdrop-filter:blur(20px) saturate(180%);\n\
     border-radius:var(--ssfx-radius-nav);\n\
@@ -895,7 +910,7 @@
     border-bottom:2px solid transparent;\n\
     color:var(--ssfx-nav-text);\n\
     padding:16px 2px;\n\
-    font-size:12.5px;\n\
+    font-size:13.5px;\n\
     font-weight:500;\n\
     letter-spacing:.02em;\n\
     cursor:pointer;\n\
@@ -907,8 +922,9 @@
 }\n\
 .ssfx .fam-btn:hover{ color:var(--ssfx-nav-text-active); }\n\
 .ssfx .fam-btn.active{ color:var(--ssfx-nav-text-active); border-bottom-color:var(--ssfx-nav-text-active); }\n\
-.ssfx .fam-count{ font-size:10.5px; background:rgba(255,255,255,.16); color:inherit; padding:1px 7px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
-.ssfx .fam-btn.active .fam-count{ background:rgba(255,255,255,.24); }\n\
+.ssfx .fam-count{ font-size:11.5px; background:rgba(0,0,0,.06); color:inherit; padding:1px 7px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
+.ssfx .fam-btn.active .fam-count{ background:rgba(0,0,0,.1); }\n\
+.ssfx .fam-icon{ width:20px; height:20px; border-radius:6px; object-fit:cover; display:block; }\n\
 \n\
 /* Bara de filtre — grupuri separate prin linii subțiri, etichete discrete */\n\
 .ssfx .filt{\n\
@@ -933,7 +949,7 @@
     border-left:1px solid var(--ssfx-border);\n\
 }\n\
 .ssfx .filt-group:first-child{ border-left:none; padding-left:0; }\n\
-.ssfx .filt-label{ font-size:11px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.05em; text-transform:uppercase; }\n\
+.ssfx .filt-label{ font-size:12px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.05em; text-transform:uppercase; }\n\
 .ssfx .chip{\n\
     background:var(--ssfx-badge-bg);\n\
     border:1px solid transparent;\n\
@@ -941,7 +957,7 @@
     padding:6px 15px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
     cursor:pointer;\n\
-    font-size:13px;\n\
+    font-size:14px;\n\
     font-weight:500;\n\
     transition:var(--ssfx-transition);\n\
     white-space:nowrap;\n\
@@ -952,7 +968,7 @@
     background:var(--ssfx-badge-bg);\n\
     border:none;\n\
     color:var(--ssfx-text-muted);\n\
-    font-size:12.5px;\n\
+    font-size:13.5px;\n\
     font-weight:500;\n\
     cursor:pointer;\n\
     padding:8px 18px;\n\
@@ -989,10 +1005,10 @@
 }\n\
 \n\
 /* Model — etichetă sus de tot pe card */\n\
-.ssfx .model-tag{ font-size:11.5px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }\n\
+.ssfx .model-tag{ font-size:12.5px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }\n\
 \n\
 /* Badge-uri */\n\
-.ssfx .badge{ display:inline-block; font-size:12px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
+.ssfx .badge{ display:inline-block; font-size:13px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
 .ssfx .badge.badge-red{ background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
 .ssfx .product-card.is-hero .badge.badge-red{ background:var(--ssfx-text); color:#fff; }\n\
 .ssfx .badge.badge-copilot{ background:var(--ssfx-badge-bg); color:var(--ssfx-accent); }\n\
@@ -1003,7 +1019,7 @@
     background:var(--ssfx-text);\n\
     color:#fff;\n\
     font-weight:600;\n\
-    font-size:13px;\n\
+    font-size:14px;\n\
     padding:6px 12px;\n\
     border-radius:var(--ssfx-radius-chip);\n\
     z-index:2;\n\
@@ -1011,7 +1027,7 @@
 }\n\
 .ssfx .product-card.is-hero .savings-badge{ background:var(--ssfx-accent); }\n\
 .ssfx .bestseller-ribbon{\n\
-    font-size:12px;\n\
+    font-size:13px;\n\
     color:var(--ssfx-accent);\n\
     font-weight:600;\n\
     letter-spacing:.02em;\n\
@@ -1024,15 +1040,15 @@
 .ssfx .product-image{ text-align:center; margin-bottom:24px; height:220px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:var(--ssfx-radius-image); }\n\
 .ssfx .product-image img{ max-width:100%; max-height:100%; object-fit:contain; transition:transform .5s cubic-bezier(.28,.11,.32,1); }\n\
 .ssfx .product-card:hover .product-image img{ transform:scale(1.06); }\n\
-.ssfx .product-title{ font-size:19px; font-weight:600; color:var(--ssfx-text); margin:0 0 4px; text-decoration:none; line-height:1.35; letter-spacing:-.01em; display:block; }\n\
+.ssfx .product-title{ font-size:20.5px; font-weight:600; color:var(--ssfx-text); margin:0 0 4px; text-decoration:none; line-height:1.35; letter-spacing:-.01em; display:block; }\n\
 .ssfx .product-title:hover{ color:var(--ssfx-accent); }\n\
-.ssfx .product-model{ font-size:13px; color:var(--ssfx-text-muted); margin-bottom:2px; }\n\
+.ssfx .product-model{ font-size:14px; color:var(--ssfx-text-muted); margin-bottom:2px; }\n\
 .ssfx .cpu-chip{\n\
     --dot:#86868b;\n\
     display:inline-flex;\n\
     align-items:center;\n\
     gap:6px;\n\
-    font-size:12.5px;\n\
+    font-size:13.5px;\n\
     font-weight:500;\n\
     color:var(--ssfx-text-muted);\n\
     background:var(--ssfx-badge-bg);\n\
@@ -1047,31 +1063,31 @@
 .ssfx .divider{ height:1px; background:var(--ssfx-border); margin:20px 0; border:none; width:100%; }\n\
 \n\
 /* Prețuri */\n\
-.ssfx .price-label{ font-size:13px; color:var(--ssfx-text-muted); }\n\
-.ssfx .price-old{ display:block; text-decoration:line-through; color:var(--ssfx-text-muted); font-size:15px; margin-top:2px; }\n\
+.ssfx .price-label{ font-size:14px; color:var(--ssfx-text-muted); }\n\
+.ssfx .price-old{ display:block; text-decoration:line-through; color:var(--ssfx-text-muted); font-size:16px; margin-top:2px; }\n\
 .ssfx .mega-price-box{ display:flex; flex-direction:column; gap:2px; margin:14px 0 16px; text-align:left; }\n\
-.ssfx .mega-price-label{ font-size:13px; color:var(--ssfx-text-muted); }\n\
-.ssfx .mega-price-amount{ font-size:28px; font-weight:600; color:var(--ssfx-text); letter-spacing:-.02em; }\n\
-.ssfx .save-line{ font-size:13px; color:var(--ssfx-success); font-weight:500; margin-top:2px; }\n\
+.ssfx .mega-price-label{ font-size:14px; color:var(--ssfx-text-muted); }\n\
+.ssfx .mega-price-amount{ font-size:30px; font-weight:600; color:var(--ssfx-text); letter-spacing:-.02em; }\n\
+.ssfx .save-line{ font-size:14px; color:var(--ssfx-success); font-weight:500; margin-top:2px; }\n\
 \n\
 /* Specificații */\n\
 .ssfx .product-specs{ flex-grow:1; margin:4px 0 12px; }\n\
-.ssfx .specs-list{ font-size:13.5px; color:var(--ssfx-text-muted); padding-left:18px; margin:0; max-height:80px; overflow:hidden; transition:max-height .4s cubic-bezier(.28,.11,.32,1); }\n\
+.ssfx .specs-list{ font-size:14.5px; color:var(--ssfx-text-muted); padding-left:18px; margin:0; max-height:80px; overflow:hidden; transition:max-height .4s cubic-bezier(.28,.11,.32,1); }\n\
 .ssfx .specs-list.expanded{ max-height:600px; }\n\
 .ssfx .specs-list li{ margin-bottom:6px; }\n\
-.ssfx .show-more-btn{ color:var(--ssfx-accent); font-size:13px; font-weight:500; cursor:pointer; margin-top:4px; display:inline-block; user-select:none; }\n\
+.ssfx .show-more-btn{ color:var(--ssfx-accent); font-size:14px; font-weight:500; cursor:pointer; margin-top:4px; display:inline-block; user-select:none; }\n\
 .ssfx .show-more-btn:hover{ text-decoration:underline; }\n\
 \n\
 /* Acțiune */\n\
 .ssfx .actions-row{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }\n\
-.ssfx .btn{ width:100%; text-align:center; padding:13px 20px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:16px; cursor:pointer; text-decoration:none; transition:var(--ssfx-transition); display:inline-block; }\n\
+.ssfx .btn{ width:100%; text-align:center; padding:13px 20px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:17px; cursor:pointer; text-decoration:none; transition:var(--ssfx-transition); display:inline-block; }\n\
 .ssfx .btn-primary{ background:var(--ssfx-accent); color:#fff; border:1px solid var(--ssfx-accent); }\n\
 .ssfx .btn-primary:hover{ background:var(--ssfx-accent-hover); border-color:var(--ssfx-accent-hover); }\n\
 .ssfx .btn-primary:active{ transform:scale(.97); }\n\
-.ssfx .stock-out{ width:100%; text-align:center; padding:13px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:15px; background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
-.ssfx .urgency-text{ font-size:12.5px; color:var(--ssfx-text-muted); font-weight:500; text-align:center; }\n\
+.ssfx .stock-out{ width:100%; text-align:center; padding:13px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:16px; background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
+.ssfx .urgency-text{ font-size:13.5px; color:var(--ssfx-text-muted); font-weight:500; text-align:center; }\n\
 \n\
-.ssfx .no-results{ grid-column:1/-1; text-align:center; padding:60px 20px; font-size:16px; color:var(--ssfx-text-muted); }\n\
+.ssfx .no-results{ grid-column:1/-1; text-align:center; padding:60px 20px; font-size:17px; color:var(--ssfx-text-muted); }\n\
 \n\
 /* Responsive */\n\
 @media(max-width:767px){\n\
@@ -1079,7 +1095,7 @@
     .ssfx .product-grid{ grid-template-columns:1fr; }\n\
     .ssfx .fam-tabs{ justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:22px; padding:0 18px; scrollbar-width:none; }\n\
     .ssfx .fam-tabs::-webkit-scrollbar{ display:none; }\n\
-    .ssfx .fam-btn{ padding:14px 2px; font-size:12px; }\n\
+    .ssfx .fam-btn{ padding:14px 2px; font-size:13px; }\n\
     .ssfx .filt{ justify-content:flex-start; padding:10px 18px; }\n\
     .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:14px 0; }\n\
     .ssfx .filt-group:first-child{ border-top:none; }\n\
