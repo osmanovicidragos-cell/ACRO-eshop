@@ -73,15 +73,55 @@
         // Prag: dacă reducerea >= această valoare, cardul primește "is-hero" (cea mai mare reducere din familie)
         heroMarksTopDiscount: true,
 
-        // Completează specificațiile din card cu fișa tehnică COMPLETĂ de pe
-        // pagina produsului (SKU), printr-un fetch în fundal, pe lângă lista
-        // scurtă deja disponibilă din pagina de listare. Dacă fetch-ul eșuează
-        // sau structura paginii de produs nu e recunoscută, cardul rămâne cu
-        // specificațiile scurte deja afișate — nimic nu se strică.
+        // Câte modele (produsul are, pe lângă procesor/memorie, mult mai multe
+        // atribute deja disponibile pe pagina de listare — stocare, placă
+        // video, afișaj, baterie, garanție etc. — în același jsonConfig al
+        // swatch-renderer-ului). Lista de mai jos spune EXACT ce câmpuri să
+        // afișăm ca specificații pe card, cu ce etichetă în română, și în ce
+        // ordine. Fiecare intrare poate avea mai multe coduri de câmp
+        // alternative (primul care are valoare completată câștigă) — util
+        // pentru perechi ca "display" / "Display_filter", unde doar unul e
+        // populat, în funcție de produs.
+        // Ca să adaugi/elimini/reordonezi o specificație afișată, modifici
+        // DOAR această listă — nu trebuie umblat prin parseProduct().
+        specFields: [
+            { label: 'Sistem de operare', fields: ['operating_system'] },
+            { label: 'Culoare',           fields: ['color'] },
+            { label: 'Procesor',          fields: ['processor', 'processor_filter'] },
+            { label: 'Placă video',       fields: ['gpu'] },
+            { label: 'Memorie video',     fields: ['vrAM'] },
+            { label: 'Memorie',           fields: ['memory'] },
+            { label: 'Stocare',           fields: ['storage', 'storage_filter'] },
+            { label: 'Afișaj',            fields: ['display', 'Display_filter', 'panel_filter'] },
+            { label: 'Rată de refresh',   fields: ['display_rate_filter_new'] },
+            { label: 'Luminozitate',      fields: ['brightness'] },
+            { label: 'Ecran tactil',      fields: ['touchscreen'] },
+            { label: 'Baterie',           fields: ['battery'] },
+            { label: 'Wi-Fi',             fields: ['wifi'] },
+            { label: 'Bluetooth',         fields: ['bluetooth'] },
+            { label: 'LAN',               fields: ['lan'] },
+            { label: 'Porturi USB',       fields: ['usb_ports'] },
+            { label: 'HDMI',              fields: ['hdmi'] },
+            { label: 'Cameră web',        fields: ['web_camera'] },
+            { label: 'Unitate optică',    fields: ['optical_drive'] },
+            { label: 'Garanție',          fields: ['warranty'] }
+        ],
+
+        // Rezervă: dacă niciun câmp din specFields nu are valoare pentru un
+        // produs (jsonConfig incomplet), cardul revine automat la lista din
+        // short_description (fallback existent, extractSpecs()).
+
+        // Completare opțională, în fundal: pe lângă specFields (deja suficient
+        // de complet pentru majoritatea produselor), poți încerca și un fetch
+        // direct al paginii de produs (SKU), pentru cazul rar în care fișa
+        // tehnică de-acolo are date suplimentare care nu apar deloc în
+        // jsonConfig-ul paginii de listare. Dezactivat implicit, ca să nu
+        // facem cereri de rețea inutile — activează-l doar dacă chiar ai
+        // nevoie de date suplimentare de pe pagina produsului.
         // Selectoarele folosite sunt în parseSpecsFromDoc() mai jos; dacă nu
         // prind nimic pe pagina reală de produs, ajustează-le acolo după ce
         // inspectezi codul HTML al unei pagini SKU.
-        specsFromPdp: true,
+        specsFromPdp: false,
         // Câte linii de specificații păstrăm după completare
         specsFromPdpLimit: 12
     };
@@ -224,6 +264,7 @@
     }
 
     // Extrage lista de specificații din HTML-ul short_description
+    // (rezervă, folosită doar dacă buildStructuredSpecs() nu găsește nimic)
     function extractSpecs(html) {
         if (!html) return [];
         var tmp = el('div', null, html);
@@ -236,10 +277,28 @@
         return out;
     }
 
+    // Construiește lista de specificații din câmpurile individuale ale
+    // variantei curente (cfg.dynamic), conform CFG.specFields — sursa
+    // principală de specificații pentru card (vezi comentariul de la
+    // CFG.specFields pentru cum se modifică ce se afișează).
+    function buildStructuredSpecs(cfg, vid) {
+        if (!cfg) return [];
+        var out = [];
+        CFG.specFields.forEach(function (entry) {
+            for (var i = 0; i < entry.fields.length; i++) {
+                var val = dynVal(cfg, entry.fields[i], vid);
+                if (val) { out.push(entry.label + ': ' + val); return; }
+            }
+        });
+        return out;
+    }
+
     /* ---------------------------------------------------------------------- */
-    /*  SPECIFICAȚII COMPLETE DE PE PAGINA PRODUSULUI (SKU)                    */
-    /*  Pagina de listare oferă doar o listă scurtă (short_description).       */
-    /*  Aici încercăm să citim fișa tehnică COMPLETĂ direct din HTML-ul        */
+    /*  SPECIFICAȚII SUPLIMENTARE DE PE PAGINA PRODUSULUI (SKU) — opțional     */
+    /*  buildStructuredSpecs() de mai sus e sursa principală și acoperă        */
+    /*  majoritatea cazurilor din datele deja disponibile pe pagina de         */
+    /*  listare. Blocul următor e o completare opțională (CFG.specsFromPdp),   */
+    /*  dezactivată implicit: încearcă să citim fișa tehnică direct din HTML-ul */
     /*  paginii de produs, prin fetch în fundal. Magento generează de obicei   */
     /*  un tabel standard de "Specificații tehnice" / "Additional Information" */
     /*  — încercăm mai multe tipare cunoscute, în ordine, și renunțăm tăcut    */
@@ -409,8 +468,10 @@
         // Stock
         var outOfStock = !!li.querySelector('.stock.unavailable');
 
-        // Specificații
-        var specs = extractSpecs(shortDesc);
+        // Specificații — întâi câmpurile structurate (cfg.dynamic), apoi
+        // fallback pe lista scurtă din short_description dacă nu găsim nimic
+        var specs = buildStructuredSpecs(cfg, vid);
+        if (!specs.length) specs = extractSpecs(shortDesc);
 
         return {
             name: name || titleAttr,
@@ -485,6 +546,11 @@
         card.setAttribute('data-ram', p.ram || '');
         card.setAttribute('data-discount', p.pct || 0);
 
+        // Model (etichetă sus de tot pe card, deasupra badge-ului)
+        if (p.model) {
+            card.appendChild(el('div', 'model-tag', p.model));
+        }
+
         // Ribbon (doar hero)
         if (isHero && p.hasDiscount) {
             card.appendChild(el('span', 'bestseller-ribbon', 'Cea mai mare reducere'));
@@ -515,11 +581,9 @@
         aTitle.href = p.url; aTitle.target = '_blank'; aTitle.rel = 'noopener';
         card.appendChild(aTitle);
 
-        // Model
-        if (p.model || p.copilot) {
-            var modelTxt = p.model || '';
-            if (p.copilot) modelTxt += (modelTxt ? ' · ' : '') + 'Copilot+ PC';
-            card.appendChild(el('div', 'product-model', modelTxt));
+        // Copilot+ (modelul e deja afișat sus de tot pe card, ca model-tag)
+        if (p.copilot) {
+            card.appendChild(el('div', 'product-model', 'Copilot+ PC'));
         }
 
         // Cip CPU
@@ -850,6 +914,9 @@
     max-width:100%;\n\
 }\n\
 .ssfx .product-card:hover{ border-color:transparent; box-shadow:0 20px 40px rgba(0,0,0,.08); transform:translateY(-2px); }\n\
+\n\
+/* Model — etichetă sus de tot pe card */\n\
+.ssfx .model-tag{ font-size:11.5px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }\n\
 \n\
 /* Badge-uri */\n\
 .ssfx .badge{ display:inline-block; font-size:12px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
