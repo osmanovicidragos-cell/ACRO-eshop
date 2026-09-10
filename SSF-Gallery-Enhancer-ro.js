@@ -140,7 +140,12 @@
         // parseSpecsFromDoc).
         specsFromPdp: true,
         // Câte linii de specificații păstrăm după completare
-        specsFromPdpLimit: 12
+        specsFromPdpLimit: 12,
+        // Etichete care NU se afișează, chiar dacă apar în fișa tehnică de pe
+        // pagina produsului (câmpuri administrative, nu specificații utile
+        // pentru cumpărător). Scrie-le cu litere mici, fără ':'. Ca să
+        // ascunzi și altele, adaugă-le pur și simplu în listă.
+        specsFromPdpExclude: ['sku', 'serie produs', 'marca']
     };
 
     /* ---------------------------------------------------------------------- */
@@ -329,6 +334,15 @@
     /*  — încercăm mai multe tipare cunoscute, în ordine, și renunțăm tăcut    */
     /*  dacă nu recunoaștem structura paginii (cardul rămâne cu ce avea).      */
     /* ---------------------------------------------------------------------- */
+    // O etichetă e "exclusă" dacă (fără diacritice/majuscule/':') se regăsește
+    // în CFG.specsFromPdpExclude — folosit ca să scoatem din listă rânduri
+    // administrative (SKU, cod intern etc.) care nu sunt specificații utile
+    // pentru cumpărător.
+    function isExcludedSpecLabel(label) {
+        var norm = label.toLowerCase().replace(/:$/, '').trim();
+        return CFG.specsFromPdpExclude.indexOf(norm) !== -1;
+    }
+
     function parseSpecsFromDoc(doc) {
         var out = [];
 
@@ -345,7 +359,7 @@
                 var td = tr.querySelector('td, .col.data, .data');
                 var label = th ? th.textContent.replace(/\s+/g, ' ').trim() : '';
                 var val = td ? td.textContent.replace(/\s+/g, ' ').trim() : '';
-                if (label && val) out.push(label + ': ' + val);
+                if (label && val && !isExcludedSpecLabel(label)) out.push(label + ': ' + val);
             });
         }
 
@@ -358,13 +372,15 @@
                     if (dd && /^dd$/i.test(dd.tagName)) {
                         var label = dt.textContent.replace(/\s+/g, ' ').trim();
                         var val = dd.textContent.replace(/\s+/g, ' ').trim();
-                        if (label && val) out.push(label + ': ' + val);
+                        if (label && val && !isExcludedSpecLabel(label)) out.push(label + ': ' + val);
                     }
                 });
             }
         }
 
         // 3) Fallback: listă simplă <li> din descrierea / fișa produsului
+        // (aici nu avem etichetă/valoare separate, deci verificăm dacă linia
+        // ÎNCEPE cu o etichetă exclusă, ex. "SKU: ...")
         if (!out.length) {
             doc.querySelectorAll(
                 '.product.attribute.description li, ' +
@@ -374,7 +390,10 @@
                 '.tech-specs li'
             ).forEach(function (li) {
                 var t = li.textContent.replace(/\s+/g, ' ').trim();
-                if (t) out.push(t);
+                var startsExcluded = CFG.specsFromPdpExclude.some(function (ex) {
+                    return t.toLowerCase().indexOf(ex + ':') === 0;
+                });
+                if (t && !startsExcluded) out.push(t);
             });
         }
 
@@ -586,11 +605,9 @@
             card.appendChild(el('div', 'savings-badge', '−' + p.pct + '%'));
         }
 
-        // Badge Copilot / familie
+        // Badge Copilot
         if (p.copilot) {
             card.appendChild(el('span', 'badge badge-copilot', 'Copilot+ PC'));
-        } else {
-            card.appendChild(el('span', 'badge badge-red', 'ASUS Sales Festival'));
         }
 
         // Imagine
