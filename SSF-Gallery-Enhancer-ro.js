@@ -23,6 +23,13 @@
  *   Google Tag Manager sau orice mecanism care adaugă JS extern, ex.:
  *     <script src="/CALE/SSF-Gallery-Enhancer.js" defer></script>
  *   Scriptul găsește singur galeria, injectează singur CSS-ul și construiește singur afișarea.
+ *
+ * CUM MODIFICI DESIGN-UL (fără să atingi restul fișierului):
+ *   Tot ce ține de aspect (culori, colțuri rotunjite, fonturi, spațiere) este
+ *   centralizat în obiectul THEME de mai jos. Schimbă doar valorile de acolo —
+ *   restul CSS-ului (mai jos, în injectCSS) folosește automat aceste valori
+ *   prin variabile CSS (var(--ssfx-...)), deci nu trebuie umblat prin CSS.
+ *   Tot ce ține de TEXT/COMPORTAMENT (etichete, praguri, monedă) este în CFG.
  * ========================================================================== */
 
 (function () {
@@ -45,7 +52,8 @@
     })();
 
     /* ---------------------------------------------------------------------- */
-    /*  CONFIGURARE (ușor de ajustat)                                          */
+    /*  CONFIGURARE COMPORTAMENT (ușor de ajustat)                             */
+    /*  Texte, monedă, praguri de filtrare. Pentru CULORI / DESIGN vezi THEME. */
     /* ---------------------------------------------------------------------- */
     var CFG = {
         currency: 'Lei',
@@ -67,6 +75,53 @@
     };
 
     /* ---------------------------------------------------------------------- */
+    /*  CONFIGURARE DESIGN — stil "Apple" (aici modifici aspectul galeriei)   */
+    /* -----------------------------------------------------------------------
+     *  Fiecare cheie devine o variabilă CSS (ex: '--ssfx-accent' -> folosită
+     *  în CSS ca var(--ssfx-accent)). Ca să schimbi o culoare, un colț
+     *  rotunjit sau un spațiu, modifici DOAR o valoare aici — nu trebuie
+     *  să cauți prin tot CSS-ul din injectCSS().
+     * ---------------------------------------------------------------------- */
+    var THEME = {
+        /* Tipografie — stivă de fonturi "system" folosită de Apple */
+        '--ssfx-font': '-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif',
+
+        /* Culori de bază */
+        '--ssfx-page-bg':    '#fbfbfd', // fundalul din spatele întregii galerii
+        '--ssfx-card-bg':    '#ffffff', // fundalul cardurilor de produs
+        '--ssfx-text':       '#1d1d1f', // text principal (titluri, prețuri)
+        '--ssfx-text-muted': '#6e6e73', // text secundar (specificații, etichete)
+        '--ssfx-border':     '#d2d2d7', // contur foarte subțire (hairline)
+
+        /* Culoare accent — linkuri, buton principal, filtre/tab-uri active */
+        '--ssfx-accent':       '#0071e3',
+        '--ssfx-accent-hover': '#0077ed',
+
+        /* Culoare pentru linia "Economisești ..." */
+        '--ssfx-success': '#1d7a46',
+
+        /* Fundal pentru badge-uri / chip-uri neutre (gri foarte deschis) */
+        '--ssfx-badge-bg': '#f5f5f7',
+
+        /* Culoare punct indicator pe cip-ul CPU (doar punctul, nu tot fundalul) */
+        '--ssfx-cpu-intel':      '#0068b5',
+        '--ssfx-cpu-amd':        '#ed1c24',
+        '--ssfx-cpu-snapdragon': '#7c1dd8',
+
+        /* Colțuri rotunjite */
+        '--ssfx-radius-card':   '22px',
+        '--ssfx-radius-button': '980px', // pill perfect, ca butoanele Apple
+        '--ssfx-radius-chip':   '980px',
+
+        /* Spațiere */
+        '--ssfx-pad-card': '32px',
+        '--ssfx-gap-grid': '28px',
+
+        /* Tranziție folosită la hover / animații */
+        '--ssfx-transition': 'all .3s cubic-bezier(.28,.11,.32,1)'
+    };
+
+    /* ---------------------------------------------------------------------- */
     /*  FUNCȚII AJUTĂTOARE                                                     */
     /* ---------------------------------------------------------------------- */
 
@@ -82,13 +137,13 @@
         var s = Number(n).toFixed(2);          // "1200.00"
         var parts = s.split('.');
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return parts[0] + ',' + parts[1] + '\u00A0' + CFG.currency;
+        return parts[0] + ',' + parts[1] + ' ' + CFG.currency;
     }
 
     function detectBrand(str) {
         if (!str) return null;
         if (/snapdragon|qualcomm/i.test(str)) return 'snapdragon';
-        if (/intel|core\u2122|\bcore\b|ultra|celeron|pentium/i.test(str)) return 'intel';
+        if (/intel|core™|\bcore\b|ultra|celeron|pentium/i.test(str)) return 'intel';
         if (/ryzen|\bamd\b|radeon/i.test(str)) return 'amd';
         return null;
     }
@@ -102,7 +157,7 @@
         if (!str) return '';
         return str
             .replace(/\s*Processor\s*/i, ' ')
-            .replace(/\u00a0/g, ' ')
+            .replace(/ /g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
     }
@@ -274,11 +329,9 @@
     /* ---------------------------------------------------------------------- */
     function collectFamilies(root) {
         var families = [];
-        var seenTab = false;
 
         var tabItems = root.querySelectorAll('[data-content-type="tab-item"]');
         if (tabItems.length) {
-            seenTab = true;
             tabItems.forEach(function (tab) {
                 var id = tab.getAttribute('id');
                 var name = '';
@@ -302,7 +355,7 @@
             var lis2 = root.querySelectorAll('li.product-item');
             var cards2 = [];
             lis2.forEach(function (li) {
-                var p = parseProduct(li, 'Modele');
+                var p = parseProduct(li, 'Toate modelele');
                 if (p) cards2.push(p);
             });
             if (cards2.length) families.push({ name: 'Toate modelele', cards: cards2 });
@@ -324,19 +377,19 @@
 
         // Ribbon (doar hero)
         if (isHero && p.hasDiscount) {
-            card.appendChild(el('span', 'bestseller-ribbon', '\u2605 CEA MAI MARE REDUCERE'));
+            card.appendChild(el('span', 'bestseller-ribbon', 'Cea mai mare reducere'));
         }
 
         // Savings badge (procent automat)
         if (p.hasDiscount) {
-            card.appendChild(el('div', 'savings-badge', '\u2212' + p.pct + '%'));
+            card.appendChild(el('div', 'savings-badge', '−' + p.pct + '%'));
         }
 
         // Badge Copilot / familie
         if (p.copilot) {
             card.appendChild(el('span', 'badge badge-copilot', 'Copilot+ PC'));
         } else {
-            card.appendChild(el('span', 'badge badge-red', 'ASUS SALES FESTIVAL'));
+            card.appendChild(el('span', 'badge badge-red', 'ASUS Sales Festival'));
         }
 
         // Imagine
@@ -355,7 +408,7 @@
         // Model
         if (p.model || p.copilot) {
             var modelTxt = p.model || '';
-            if (p.copilot) modelTxt += (modelTxt ? ' \u00B7 ' : '') + 'Copilot+ PC';
+            if (p.copilot) modelTxt += (modelTxt ? ' · ' : '') + 'Copilot+ PC';
             card.appendChild(el('div', 'product-model', modelTxt));
         }
 
@@ -368,16 +421,16 @@
 
         // Prețuri
         if (p.hasDiscount) {
-            card.appendChild(el('div', 'price-label', 'Pre\u021B normal:'));
+            card.appendChild(el('div', 'price-label', 'Preț normal:'));
             card.appendChild(el('div', 'price-old', p.oldText));
             var mega = el('div', 'mega-price-box');
-            mega.appendChild(el('span', 'mega-price-label', 'Pre\u021B promo\u021Bional'));
+            mega.appendChild(el('span', 'mega-price-label', 'Preț promoțional'));
             mega.appendChild(el('span', 'mega-price-amount', p.finalText));
             card.appendChild(mega);
-            card.appendChild(el('div', 'save-line', '\u2713 Economise\u0219ti ' + fmtMoney(p.saveAmt)));
+            card.appendChild(el('div', 'save-line', '✓ Economisești ' + fmtMoney(p.saveAmt)));
         } else {
             var mega2 = el('div', 'mega-price-box');
-            mega2.appendChild(el('span', 'mega-price-label', 'Pre\u021B'));
+            mega2.appendChild(el('span', 'mega-price-label', 'Preț'));
             mega2.appendChild(el('span', 'mega-price-amount', p.finalText));
             card.appendChild(mega2);
         }
@@ -391,7 +444,7 @@
             });
             wrap.appendChild(ul);
             if (p.specs.length > 4) {
-                wrap.appendChild(el('div', 'show-more-btn', 'Arat\u0103 mai mult \u25BE'));
+                wrap.appendChild(el('div', 'show-more-btn', 'Arată mai mult ▾'));
             }
             card.appendChild(wrap);
         }
@@ -405,7 +458,7 @@
             btn.href = p.url; btn.target = '_blank'; btn.rel = 'noopener';
             actions.appendChild(btn);
             if (p.hasDiscount) {
-                actions.appendChild(el('div', 'urgency-text', 'Stoc promo\u021Bional limitat!'));
+                actions.appendChild(el('div', 'urgency-text', 'Stoc promoțional limitat!'));
             }
         }
         card.appendChild(actions);
@@ -451,7 +504,7 @@
         filt.appendChild(gRam);
 
         var gPrice = el('div', 'filt-group');
-        gPrice.appendChild(el('span', 'filt-label', 'Pre\u021B'));
+        gPrice.appendChild(el('span', 'filt-label', 'Preț'));
         CFG.priceRanges.forEach(function (pr) {
             var chip = el('button', 'chip', pr.label);
             chip.setAttribute('data-price', pr.key);
@@ -459,7 +512,7 @@
         });
         filt.appendChild(gPrice);
 
-        var reset = el('button', 'filt-reset', 'Reseteaz\u0103 filtrele \u2715');
+        var reset = el('button', 'filt-reset', 'Resetează filtrele ✕');
         filt.appendChild(reset);
         root.appendChild(filt);
 
@@ -477,7 +530,7 @@
                 grid.appendChild(buildCard(c, idx === heroIdx));
             });
         });
-        var noRes = el('div', 'no-results', 'Nu exist\u0103 modele care s\u0103 corespund\u0103 filtrelor selectate.');
+        var noRes = el('div', 'no-results', 'Nu există modele care să corespundă filtrelor selectate.');
         noRes.style.display = 'none';
         grid.appendChild(noRes);
         root.appendChild(grid);
@@ -546,7 +599,7 @@
             var list = btn.parentNode.querySelector('.specs-list');
             if (!list) return;
             var open = list.classList.toggle('expanded');
-            btn.innerHTML = open ? 'Arat\u0103 mai pu\u021Bin \u25B4' : 'Arat\u0103 mai mult \u25BE';
+            btn.innerHTML = open ? 'Arată mai puțin ▴' : 'Arată mai mult ▾';
         });
 
         apply();
@@ -554,86 +607,191 @@
     }
 
     /* ---------------------------------------------------------------------- */
-    /*  CSS                                                                    */
+    /*  CSS — stil "Apple": mult alb/gri deschis, contururi subțiri (hairline), */
+    /*  colțuri foarte rotunjite, butoane pill, prețuri mari & clare, fără     */
+    /*  culori stridente. Toate valorile variabile vin din THEME (mai sus).   */
     /* ---------------------------------------------------------------------- */
+    function buildRootVars(theme) {
+        var out = '';
+        for (var key in theme) {
+            if (theme.hasOwnProperty(key)) out += key + ':' + theme[key] + ';';
+        }
+        return out;
+    }
+
     function injectCSS() {
         if (document.getElementById('ssfx-css')) return;
-        var css = ''
-        + '.ssfx{font-family:"Roboto",Arial,sans-serif;background:#f5f5f5;padding:26px 16px 40px;max-width:100%;box-sizing:border-box}'
-        + '.ssfx *,.ssfx *::before,.ssfx *::after{box-sizing:border-box}'
 
-        /* Tab-uri familii */
-        + '.ssfx .fam-tabs{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:1300px;margin:0 auto 20px}'
-        + '.ssfx .fam-btn{background:#fff;border:1px solid #006CE1;color:#006CE1;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:700;text-transform:uppercase;transition:.25s;display:inline-flex;align-items:center;gap:8px}'
-        + '.ssfx .fam-btn:hover{background:#f0f7ff}'
-        + '.ssfx .fam-btn.active{background:#006CE1;color:#fff;box-shadow:0 4px 10px rgba(0,108,225,.2)}'
-        + '.ssfx .fam-count{font-size:11px;background:rgba(0,0,0,.08);color:inherit;padding:1px 7px;border-radius:10px;font-weight:700}'
-        + '.ssfx .fam-btn.active .fam-count{background:rgba(255,255,255,.25)}'
-
-        /* Bara de filtre */
-        + '.ssfx .filt{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;justify-content:center;max-width:1300px;margin:0 auto 26px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.05)}'
-        + '.ssfx .filt-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
-        + '.ssfx .filt-label{font-size:12px;font-weight:700;text-transform:uppercase;color:#757575;letter-spacing:.4px}'
-        + '.ssfx .chip{background:#f4f5f7;border:1px solid #e7e9ee;color:#333;padding:7px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s}'
-        + '.ssfx .chip:hover{border-color:#006CE1;color:#006CE1}'
-        + '.ssfx .chip.active{background:#006CE1;border-color:#006CE1;color:#fff}'
-        + '.ssfx .filt-reset{background:transparent;border:none;color:#D82C2C;font-size:13px;font-weight:700;cursor:pointer}'
-        + '.ssfx .filt-reset:hover{text-decoration:underline}'
-
-        /* Grid + kartica */
-        + '.ssfx .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;max-width:1300px;margin:0 auto}'
-        + '.ssfx .product-card{background:#fff;border-radius:12px;padding:24px;display:flex;flex-direction:column;position:relative;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;min-width:0;max-width:100%}'
-        + '.ssfx .product-card:hover{transform:translateY(-5px);box-shadow:0 10px 25px rgba(0,0,0,.08)}'
-
-        /* Badge-uri */
-        + '.ssfx .badge{color:#fff;border:none;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;align-self:flex-start;margin-bottom:12px;letter-spacing:.02em}'
-        + '.ssfx .badge.badge-red{background:#f4f5f7;color:#6b7280;border:1px solid #e7e9ee}'
-        + '.ssfx .product-card.is-hero .badge.badge-red{background:#f47d20;color:#fff;border:none}'
-        + '.ssfx .badge.badge-copilot{background:linear-gradient(90deg,#006CE1,#8A2BE2);color:#fff}'
-        + '.ssfx .savings-badge{position:absolute;top:14px;right:14px;background:#fff;color:#c2410c;font-weight:800;font-size:12.5px;padding:5px 9px;border-radius:8px;border:1px solid #ffd6ad;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.06);z-index:2;line-height:1;letter-spacing:-.3px}'
-        + '.ssfx .product-card.is-hero .savings-badge{background:linear-gradient(135deg,#ff9d2f,#f5610a);color:#fff;width:54px;height:54px;padding:0;border:none;border-radius:50%;font-size:15px;box-shadow:0 4px 12px rgba(245,97,10,.38)}'
-        + '.ssfx .bestseller-ribbon{font-size:12px;color:#856404;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:3px 8px;align-self:flex-start;margin-bottom:10px;font-weight:700}'
-
-        /* Imagine / titlu / model / cpu */
-        + '.ssfx .product-image{text-align:center;margin-bottom:20px;height:200px;display:flex;align-items:center;justify-content:center}'
-        + '.ssfx .product-image img{max-width:100%;max-height:100%;object-fit:contain}'
-        + '.ssfx .product-title{font-size:18px;font-weight:700;color:#1a1a1a;margin:0 0 6px;text-decoration:none;line-height:1.4;display:block}'
-        + '.ssfx .product-title:hover{color:#006CE1}'
-        + '.ssfx .product-model{font-size:13px;color:#757575;margin-bottom:4px}'
-        + '.ssfx .cpu-chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin:4px 0}'
-        + '.ssfx .cpu-chip.cpu-intel{background:#cce3ff;color:#003d99}'
-        + '.ssfx .cpu-chip.cpu-amd{background:#ffddd4;color:#c0392b}'
-        + '.ssfx .cpu-chip.cpu-snapdragon{background:#e8d4ff;color:#5a0080}'
-        + '.ssfx .divider{height:1px;background:#eee;margin:15px 0;border:none;width:100%}'
-
-        /* Prețuri */
-        + '.ssfx .price-label{font-size:13px;color:#757575}'
-        + '.ssfx .price-old{display:inline-block;text-decoration:line-through;color:#757575;font-size:14px;margin-top:2px}'
-        + '.ssfx .mega-price-box{background:#f0fdf4;border-radius:8px;padding:12px;margin:10px 0 12px;text-align:left;border-left:4px solid #27AE60}'
-        + '.ssfx .mega-price-label{font-size:12px;color:#757575;display:block;margin-bottom:4px}'
-        + '.ssfx .mega-price-amount{font-size:24px;font-weight:700;color:#D82C2C;display:block}'
-        + '.ssfx .save-line{font-size:12px;color:#27AE60;font-weight:700;margin-top:4px}'
-
-        /* Specificații */
-        + '.ssfx .product-specs{flex-grow:1;margin:10px 0}'
-        + '.ssfx .specs-list{font-size:13px;color:#4a4a4a;padding-left:20px;margin:0;max-height:78px;overflow:hidden;transition:max-height .4s ease-out}'
-        + '.ssfx .specs-list.expanded{max-height:600px}'
-        + '.ssfx .specs-list li{margin-bottom:6px}'
-        + '.ssfx .show-more-btn{color:#006CE1;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px;display:inline-block;user-select:none}'
-        + '.ssfx .show-more-btn:hover{text-decoration:underline}'
-
-        /* Acțiune */
-        + '.ssfx .actions-row{display:flex;flex-direction:column;gap:8px;margin-top:12px}'
-        + '.ssfx .btn{width:100%;text-align:center;padding:12px;border-radius:8px;font-weight:600;font-size:16px;cursor:pointer;text-decoration:none;transition:.3s;display:inline-block;text-transform:uppercase}'
-        + '.ssfx .btn-primary{background:#006CE1;color:#fff;border:1px solid #006CE1;box-shadow:0 4px 10px rgba(0,108,225,.2)}'
-        + '.ssfx .btn-primary:hover{background:#005bb5;color:#fff;transform:translateY(-1px);box-shadow:0 6px 15px rgba(0,108,225,.3)}'
-        + '.ssfx .stock-out{width:100%;text-align:center;padding:12px;border-radius:8px;font-weight:700;font-size:15px;background:#f4f5f7;color:#9aa0a6;text-transform:uppercase}'
-        + '.ssfx .urgency-text{font-size:12px;color:#D82C2C;font-weight:600;text-align:center}'
-
-        + '.ssfx .no-results{grid-column:1/-1;text-align:center;padding:40px;font-size:16px;color:#757575}'
-
-        /* Responsive */
-        + '@media(max-width:767px){.ssfx .product-grid{grid-template-columns:1fr}.ssfx .fam-btn{padding:9px 14px;font-size:13px}}';
+        var css = '.ssfx{' + buildRootVars(THEME) + '}\n' + '\n\
+/* Bază */\n\
+.ssfx{\n\
+    font-family:var(--ssfx-font);\n\
+    -webkit-font-smoothing:antialiased;\n\
+    background:var(--ssfx-page-bg);\n\
+    color:var(--ssfx-text);\n\
+    padding:56px 22px 64px;\n\
+    max-width:100%;\n\
+    box-sizing:border-box;\n\
+}\n\
+.ssfx *,.ssfx *::before,.ssfx *::after{ box-sizing:border-box; }\n\
+\n\
+/* Tab-uri familii */\n\
+.ssfx .fam-tabs{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:1200px; margin:0 auto 40px; }\n\
+.ssfx .fam-btn{\n\
+    background:var(--ssfx-badge-bg);\n\
+    border:1px solid transparent;\n\
+    color:var(--ssfx-text);\n\
+    padding:10px 22px;\n\
+    border-radius:var(--ssfx-radius-chip);\n\
+    cursor:pointer;\n\
+    font-size:15px;\n\
+    font-weight:500;\n\
+    transition:var(--ssfx-transition);\n\
+    display:inline-flex;\n\
+    align-items:center;\n\
+    gap:8px;\n\
+}\n\
+.ssfx .fam-btn:hover{ background:#ececf0; }\n\
+.ssfx .fam-btn.active{ background:var(--ssfx-text); color:#fff; }\n\
+.ssfx .fam-count{ font-size:11px; background:rgba(0,0,0,.08); color:inherit; padding:1px 8px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
+.ssfx .fam-btn.active .fam-count{ background:rgba(255,255,255,.22); }\n\
+\n\
+/* Bara de filtre */\n\
+.ssfx .filt{\n\
+    display:flex;\n\
+    flex-wrap:wrap;\n\
+    gap:14px 26px;\n\
+    align-items:center;\n\
+    justify-content:center;\n\
+    max-width:1200px;\n\
+    margin:0 auto 48px;\n\
+    padding:18px 22px;\n\
+    background:var(--ssfx-card-bg);\n\
+    border:1px solid var(--ssfx-border);\n\
+    border-radius:20px;\n\
+}\n\
+.ssfx .filt-group{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }\n\
+.ssfx .filt-label{ font-size:12px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.02em; }\n\
+.ssfx .chip{\n\
+    background:var(--ssfx-badge-bg);\n\
+    border:1px solid transparent;\n\
+    color:var(--ssfx-text);\n\
+    padding:7px 16px;\n\
+    border-radius:var(--ssfx-radius-chip);\n\
+    cursor:pointer;\n\
+    font-size:13px;\n\
+    font-weight:500;\n\
+    transition:var(--ssfx-transition);\n\
+}\n\
+.ssfx .chip:hover{ background:#ececf0; }\n\
+.ssfx .chip.active{ background:var(--ssfx-accent); color:#fff; }\n\
+.ssfx .filt-reset{ background:transparent; border:none; color:var(--ssfx-accent); font-size:13px; font-weight:500; cursor:pointer; }\n\
+.ssfx .filt-reset:hover{ text-decoration:underline; }\n\
+\n\
+/* Grid + card */\n\
+.ssfx .product-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--ssfx-gap-grid); max-width:1200px; margin:0 auto; }\n\
+.ssfx .product-card{\n\
+    background:var(--ssfx-card-bg);\n\
+    border:1px solid var(--ssfx-border);\n\
+    border-radius:var(--ssfx-radius-card);\n\
+    padding:var(--ssfx-pad-card);\n\
+    display:flex;\n\
+    flex-direction:column;\n\
+    position:relative;\n\
+    transition:var(--ssfx-transition);\n\
+    min-width:0;\n\
+    max-width:100%;\n\
+}\n\
+.ssfx .product-card:hover{ border-color:transparent; box-shadow:0 20px 40px rgba(0,0,0,.08); transform:translateY(-2px); }\n\
+\n\
+/* Badge-uri */\n\
+.ssfx .badge{ display:inline-block; font-size:12px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
+.ssfx .badge.badge-red{ background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
+.ssfx .product-card.is-hero .badge.badge-red{ background:var(--ssfx-text); color:#fff; }\n\
+.ssfx .badge.badge-copilot{ background:var(--ssfx-badge-bg); color:var(--ssfx-accent); }\n\
+.ssfx .savings-badge{\n\
+    position:absolute;\n\
+    top:20px;\n\
+    right:20px;\n\
+    background:var(--ssfx-text);\n\
+    color:#fff;\n\
+    font-weight:600;\n\
+    font-size:13px;\n\
+    padding:6px 12px;\n\
+    border-radius:var(--ssfx-radius-chip);\n\
+    z-index:2;\n\
+    line-height:1;\n\
+}\n\
+.ssfx .product-card.is-hero .savings-badge{ background:var(--ssfx-accent); }\n\
+.ssfx .bestseller-ribbon{\n\
+    font-size:12px;\n\
+    color:var(--ssfx-accent);\n\
+    font-weight:600;\n\
+    letter-spacing:.02em;\n\
+    text-transform:uppercase;\n\
+    align-self:flex-start;\n\
+    margin-bottom:12px;\n\
+}\n\
+\n\
+/* Imagine / titlu / model / cpu */\n\
+.ssfx .product-image{ text-align:center; margin-bottom:24px; height:220px; display:flex; align-items:center; justify-content:center; }\n\
+.ssfx .product-image img{ max-width:100%; max-height:100%; object-fit:contain; }\n\
+.ssfx .product-title{ font-size:19px; font-weight:600; color:var(--ssfx-text); margin:0 0 4px; text-decoration:none; line-height:1.35; letter-spacing:-.01em; display:block; }\n\
+.ssfx .product-title:hover{ color:var(--ssfx-accent); }\n\
+.ssfx .product-model{ font-size:13px; color:var(--ssfx-text-muted); margin-bottom:2px; }\n\
+.ssfx .cpu-chip{\n\
+    --dot:#86868b;\n\
+    display:inline-flex;\n\
+    align-items:center;\n\
+    gap:6px;\n\
+    font-size:12.5px;\n\
+    font-weight:500;\n\
+    color:var(--ssfx-text-muted);\n\
+    background:var(--ssfx-badge-bg);\n\
+    padding:4px 10px 4px 8px;\n\
+    border-radius:var(--ssfx-radius-chip);\n\
+    margin:8px 0 0;\n\
+}\n\
+.ssfx .cpu-chip::before{ content:\'\'; width:6px; height:6px; border-radius:50%; background:var(--dot); flex:0 0 auto; }\n\
+.ssfx .cpu-chip.cpu-intel{ --dot:var(--ssfx-cpu-intel); }\n\
+.ssfx .cpu-chip.cpu-amd{ --dot:var(--ssfx-cpu-amd); }\n\
+.ssfx .cpu-chip.cpu-snapdragon{ --dot:var(--ssfx-cpu-snapdragon); }\n\
+.ssfx .divider{ height:1px; background:var(--ssfx-border); margin:20px 0; border:none; width:100%; }\n\
+\n\
+/* Prețuri */\n\
+.ssfx .price-label{ font-size:13px; color:var(--ssfx-text-muted); }\n\
+.ssfx .price-old{ display:block; text-decoration:line-through; color:var(--ssfx-text-muted); font-size:15px; margin-top:2px; }\n\
+.ssfx .mega-price-box{ display:flex; flex-direction:column; gap:2px; margin:14px 0 16px; text-align:left; }\n\
+.ssfx .mega-price-label{ font-size:13px; color:var(--ssfx-text-muted); }\n\
+.ssfx .mega-price-amount{ font-size:28px; font-weight:600; color:var(--ssfx-text); letter-spacing:-.02em; }\n\
+.ssfx .save-line{ font-size:13px; color:var(--ssfx-success); font-weight:500; margin-top:2px; }\n\
+\n\
+/* Specificații */\n\
+.ssfx .product-specs{ flex-grow:1; margin:4px 0 12px; }\n\
+.ssfx .specs-list{ font-size:13.5px; color:var(--ssfx-text-muted); padding-left:18px; margin:0; max-height:80px; overflow:hidden; transition:max-height .4s cubic-bezier(.28,.11,.32,1); }\n\
+.ssfx .specs-list.expanded{ max-height:600px; }\n\
+.ssfx .specs-list li{ margin-bottom:6px; }\n\
+.ssfx .show-more-btn{ color:var(--ssfx-accent); font-size:13px; font-weight:500; cursor:pointer; margin-top:4px; display:inline-block; user-select:none; }\n\
+.ssfx .show-more-btn:hover{ text-decoration:underline; }\n\
+\n\
+/* Acțiune */\n\
+.ssfx .actions-row{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }\n\
+.ssfx .btn{ width:100%; text-align:center; padding:13px 20px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:16px; cursor:pointer; text-decoration:none; transition:var(--ssfx-transition); display:inline-block; }\n\
+.ssfx .btn-primary{ background:var(--ssfx-accent); color:#fff; border:1px solid var(--ssfx-accent); }\n\
+.ssfx .btn-primary:hover{ background:var(--ssfx-accent-hover); border-color:var(--ssfx-accent-hover); }\n\
+.ssfx .stock-out{ width:100%; text-align:center; padding:13px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:15px; background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
+.ssfx .urgency-text{ font-size:12.5px; color:var(--ssfx-text-muted); font-weight:500; text-align:center; }\n\
+\n\
+.ssfx .no-results{ grid-column:1/-1; text-align:center; padding:60px 20px; font-size:16px; color:var(--ssfx-text-muted); }\n\
+\n\
+/* Responsive */\n\
+@media(max-width:767px){\n\
+    .ssfx{ padding:40px 16px 48px; }\n\
+    .ssfx .product-grid{ grid-template-columns:1fr; }\n\
+    .ssfx .fam-btn{ padding:9px 16px; font-size:13.5px; }\n\
+    .ssfx .filt{ padding:16px; }\n\
+}\n\
+';
 
         var style = el('style');
         style.id = 'ssfx-css';
@@ -648,7 +806,7 @@
     /* ---------------------------------------------------------------------- */
     function hideOriginal(root) {
         if (!CFG.hideOriginal) return;
-        // Ascunde DOAR rândurile care conțin produsele originale (modele vechi / tab-uri vechi).
+        // Ascunde DOAR rândurile care conțin produsele originale (modele vechi / tab-urile vechi).
         // Banner-ul, divider-ul, link-urile din footer și legal rămân vizibile.
         root.querySelectorAll('[data-content-type="row"]').forEach(function (r) {
             if (r.querySelector('li.product-item')) r.style.display = 'none';
