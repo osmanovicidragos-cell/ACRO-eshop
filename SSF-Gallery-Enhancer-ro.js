@@ -73,6 +73,11 @@
         // Prag: dacă reducerea >= această valoare, cardul primește "is-hero" (cea mai mare reducere din familie)
         heroMarksTopDiscount: true,
 
+        // Meniul de familii rămâne lipit sub marginea de sus a ferestrei la
+        // scroll, ca meniul de pe apple.com. Pune pe false dacă se suprapune
+        // cu header-ul propriu al paginii.
+        stickyFamNav: true,
+
         // Câte modele (produsul are, pe lângă procesor/memorie, mult mai multe
         // atribute deja disponibile pe pagina de listare — stocare, placă
         // video, afișaj, baterie, garanție etc. — în același jsonConfig al
@@ -161,17 +166,25 @@
         '--ssfx-cpu-amd':        '#ed1c24',
         '--ssfx-cpu-snapdragon': '#7c1dd8',
 
+        /* Meniul de sus (stil Apple: bară închisă la culoare, translucidă) */
+        '--ssfx-nav-bg':          'rgba(29,29,31,.92)', // fundal bară meniu
+        '--ssfx-nav-text':        'rgba(255,255,255,.72)', // text meniu, stare normală
+        '--ssfx-nav-text-active': '#ffffff', // text meniu, activ / hover
+
         /* Colțuri rotunjite */
         '--ssfx-radius-card':   '22px',
         '--ssfx-radius-button': '980px', // pill perfect, ca butoanele Apple
         '--ssfx-radius-chip':   '980px',
+        '--ssfx-radius-image':  '14px',
+        '--ssfx-radius-nav':    '14px',
 
         /* Spațiere */
         '--ssfx-pad-card': '32px',
         '--ssfx-gap-grid': '28px',
 
-        /* Tranziție folosită la hover / animații */
-        '--ssfx-transition': 'all .3s cubic-bezier(.28,.11,.32,1)'
+        /* Tranziții folosite la hover / animații */
+        '--ssfx-transition':       'all .3s cubic-bezier(.28,.11,.32,1)',
+        '--ssfx-transition-slow':  'all .6s cubic-bezier(.28,.11,.32,1)'
     };
 
     /* ---------------------------------------------------------------------- */
@@ -783,7 +796,45 @@
         });
 
         apply();
+        setupRevealAnimation(grid);
         return root;
+    }
+
+    // Animație discretă de apariție: fiecare card devine vizibil (fade +
+    // translatare ușoară în sus) când intră în viewport, cu un mic decalaj
+    // între carduri (stagger). Dacă browserul nu suportă IntersectionObserver,
+    // cardurile apar direct, fără animație — nimic nu rămâne ascuns.
+    function revealCard(card) {
+        card.classList.add('in-view');
+        // După ce animația de apariție se termină, o "eliberăm" complet
+        // (altfel animation-fill-mode:both ar rămâne să controleze
+        // permanent transform-ul cardului și ar bloca efectul de hover,
+        // care schimbă tot transform-ul la :hover).
+        card.addEventListener('animationend', function handler(e) {
+            if (e.animationName !== 'ssfxReveal') return;
+            card.style.animation = 'none';
+            card.style.opacity = '1';
+        }, { once: true });
+    }
+
+    function setupRevealAnimation(grid) {
+        var cards = grid.querySelectorAll('.product-card');
+        if (!('IntersectionObserver' in window)) {
+            cards.forEach(revealCard);
+            return;
+        }
+        cards.forEach(function (c, i) {
+            c.style.setProperty('--ssfx-reveal-delay', (Math.min(i, 8) * 70) + 'ms');
+        });
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    revealCard(entry.target);
+                    io.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+        cards.forEach(function (c) { io.observe(c); });
     }
 
     /* ---------------------------------------------------------------------- */
@@ -802,6 +853,14 @@
     function injectCSS() {
         if (document.getElementById('ssfx-css')) return;
 
+        // Meniul de sus rămâne lipit sub marginea de sus la scroll (ca pe
+        // apple.com), dacă CFG.stickyFamNav e true. Dezactivează-l din CFG
+        // dacă intră în conflict cu header-ul propriu al paginii (z-index,
+        // suprapunere) — restul design-ului nu depinde de asta.
+        var navPositionCss = CFG.stickyFamNav
+            ? 'position:sticky; top:0; z-index:30;'
+            : 'position:relative;';
+
         var css = '.ssfx{' + buildRootVars(THEME) + '}\n' + '\n\
 /* Bază */\n\
 .ssfx{\n\
@@ -815,38 +874,41 @@
 }\n\
 .ssfx *,.ssfx *::before,.ssfx *::after{ box-sizing:border-box; }\n\
 \n\
-/* Tab-uri familii — control segmentat, stil Apple (capsulă gri cu segment activ alb) */\n\
+/* Meniul de sus — stil Apple: bară închisă la culoare, translucidă, cu blur */\n\
 .ssfx .fam-tabs{\n\
     display:flex;\n\
     flex-wrap:wrap;\n\
-    gap:2px;\n\
     justify-content:center;\n\
-    width:fit-content;\n\
-    max-width:100%;\n\
-    margin:0 auto 36px;\n\
-    padding:4px;\n\
-    background:var(--ssfx-badge-bg);\n\
-    border-radius:var(--ssfx-radius-chip);\n\
+    gap:30px;\n\
+    max-width:1200px;\n\
+    margin:0 auto 40px;\n\
+    padding:0 28px;\n\
+    background:var(--ssfx-nav-bg);\n\
+    -webkit-backdrop-filter:blur(20px) saturate(180%);\n\
+    backdrop-filter:blur(20px) saturate(180%);\n\
+    border-radius:var(--ssfx-radius-nav);\n\
+    ' + navPositionCss + '\n\
 }\n\
 .ssfx .fam-btn{\n\
     background:transparent;\n\
     border:none;\n\
-    color:var(--ssfx-text-muted);\n\
-    padding:9px 20px;\n\
-    border-radius:calc(var(--ssfx-radius-chip) - 2px);\n\
-    cursor:pointer;\n\
-    font-size:14.5px;\n\
+    border-bottom:2px solid transparent;\n\
+    color:var(--ssfx-nav-text);\n\
+    padding:16px 2px;\n\
+    font-size:12.5px;\n\
     font-weight:500;\n\
+    letter-spacing:.02em;\n\
+    cursor:pointer;\n\
     transition:var(--ssfx-transition);\n\
     display:inline-flex;\n\
     align-items:center;\n\
-    gap:8px;\n\
+    gap:7px;\n\
     white-space:nowrap;\n\
 }\n\
-.ssfx .fam-btn:hover{ color:var(--ssfx-text); }\n\
-.ssfx .fam-btn.active{ background:var(--ssfx-card-bg); color:var(--ssfx-text); box-shadow:0 1px 4px rgba(0,0,0,.14); }\n\
-.ssfx .fam-count{ font-size:11px; background:rgba(0,0,0,.08); color:inherit; padding:1px 8px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
-.ssfx .fam-btn.active .fam-count{ background:rgba(0,0,0,.08); }\n\
+.ssfx .fam-btn:hover{ color:var(--ssfx-nav-text-active); }\n\
+.ssfx .fam-btn.active{ color:var(--ssfx-nav-text-active); border-bottom-color:var(--ssfx-nav-text-active); }\n\
+.ssfx .fam-count{ font-size:10.5px; background:rgba(255,255,255,.16); color:inherit; padding:1px 7px; border-radius:var(--ssfx-radius-chip); font-weight:600; }\n\
+.ssfx .fam-btn.active .fam-count{ background:rgba(255,255,255,.24); }\n\
 \n\
 /* Bara de filtre — grupuri separate prin linii subțiri, etichete discrete */\n\
 .ssfx .filt{\n\
@@ -900,8 +962,9 @@
 }\n\
 .ssfx .filt-reset:hover{ background:#ececf0; color:var(--ssfx-text); }\n\
 \n\
-/* Grid + card */\n\
+/* Grid + card — cu o mică animație de apariție la scroll (vezi setupRevealAnimation) */\n\
 .ssfx .product-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--ssfx-gap-grid); max-width:1200px; margin:0 auto; }\n\
+@keyframes ssfxReveal{ from{ opacity:0; transform:translateY(24px); } to{ opacity:1; transform:translateY(0); } }\n\
 .ssfx .product-card{\n\
     background:var(--ssfx-card-bg);\n\
     border:1px solid var(--ssfx-border);\n\
@@ -913,8 +976,17 @@
     transition:var(--ssfx-transition);\n\
     min-width:0;\n\
     max-width:100%;\n\
+    opacity:0;\n\
 }\n\
-.ssfx .product-card:hover{ border-color:transparent; box-shadow:0 20px 40px rgba(0,0,0,.08); transform:translateY(-2px); }\n\
+.ssfx .product-card.in-view{\n\
+    animation:ssfxReveal .7s cubic-bezier(.28,.11,.32,1) both;\n\
+    animation-delay:var(--ssfx-reveal-delay,0ms);\n\
+}\n\
+.ssfx .product-card:hover{ border-color:transparent; box-shadow:0 20px 40px rgba(0,0,0,.08); transform:translateY(-6px); }\n\
+@media (prefers-reduced-motion: reduce){\n\
+    .ssfx .product-card{ opacity:1; }\n\
+    .ssfx .product-card.in-view{ animation:none; }\n\
+}\n\
 \n\
 /* Model — etichetă sus de tot pe card */\n\
 .ssfx .model-tag{ font-size:11.5px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }\n\
@@ -949,8 +1021,9 @@
 }\n\
 \n\
 /* Imagine / titlu / model / cpu */\n\
-.ssfx .product-image{ text-align:center; margin-bottom:24px; height:220px; display:flex; align-items:center; justify-content:center; }\n\
-.ssfx .product-image img{ max-width:100%; max-height:100%; object-fit:contain; }\n\
+.ssfx .product-image{ text-align:center; margin-bottom:24px; height:220px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:var(--ssfx-radius-image); }\n\
+.ssfx .product-image img{ max-width:100%; max-height:100%; object-fit:contain; transition:transform .5s cubic-bezier(.28,.11,.32,1); }\n\
+.ssfx .product-card:hover .product-image img{ transform:scale(1.06); }\n\
 .ssfx .product-title{ font-size:19px; font-weight:600; color:var(--ssfx-text); margin:0 0 4px; text-decoration:none; line-height:1.35; letter-spacing:-.01em; display:block; }\n\
 .ssfx .product-title:hover{ color:var(--ssfx-accent); }\n\
 .ssfx .product-model{ font-size:13px; color:var(--ssfx-text-muted); margin-bottom:2px; }\n\
@@ -994,6 +1067,7 @@
 .ssfx .btn{ width:100%; text-align:center; padding:13px 20px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:16px; cursor:pointer; text-decoration:none; transition:var(--ssfx-transition); display:inline-block; }\n\
 .ssfx .btn-primary{ background:var(--ssfx-accent); color:#fff; border:1px solid var(--ssfx-accent); }\n\
 .ssfx .btn-primary:hover{ background:var(--ssfx-accent-hover); border-color:var(--ssfx-accent-hover); }\n\
+.ssfx .btn-primary:active{ transform:scale(.97); }\n\
 .ssfx .stock-out{ width:100%; text-align:center; padding:13px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:15px; background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
 .ssfx .urgency-text{ font-size:12.5px; color:var(--ssfx-text-muted); font-weight:500; text-align:center; }\n\
 \n\
@@ -1003,7 +1077,9 @@
 @media(max-width:767px){\n\
     .ssfx{ padding:40px 16px 48px; }\n\
     .ssfx .product-grid{ grid-template-columns:1fr; }\n\
-    .ssfx .fam-btn{ padding:9px 16px; font-size:13.5px; }\n\
+    .ssfx .fam-tabs{ justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:22px; padding:0 18px; scrollbar-width:none; }\n\
+    .ssfx .fam-tabs::-webkit-scrollbar{ display:none; }\n\
+    .ssfx .fam-btn{ padding:14px 2px; font-size:12px; }\n\
     .ssfx .filt{ justify-content:flex-start; padding:10px 18px; }\n\
     .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:14px 0; }\n\
     .ssfx .filt-group:first-child{ border-top:none; }\n\
