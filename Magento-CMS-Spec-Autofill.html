@@ -1,0 +1,142 @@
+<!-- ==========================================================================
+     Magento-CMS-Spec-Autofill.html
+
+     SCOP: pentru o pagina CMS (Content > Pages) construita cu Page Builder,
+     unde ai adaugat un bloc "Products" cu anumite SKU-uri, acest fragment
+     completeaza AUTOMAT fiecare card cu fisa tehnica COMPLETA a acelui SKU,
+     citita direct de pe pagina reala a produsului (niciun text scris manual).
+
+     CUM SE FOLOSESTE (fara acces la cod/server, doar din Admin):
+       1) Stores > Attributes > Product > [fiecare atribut de specificatie] >
+          tab "Storefront Properties" > "Visible on Catalog Pages on
+          Storefront" = Yes. Asta face ca specificatia sa apara in tabelul
+          standard de pe pagina produsului -- de acolo il citeste scriptul.
+       2) Content > Pages > pagina ta > Edit with Page Builder.
+       3) Adauga un bloc "Products", alege SKU-urile dorite (Grid/Carousel).
+       4) Oriunde pe aceeasi pagina, adauga un bloc "HTML Code" si lipeste
+          TOT continutul acestui fisier (inclusiv <script> si <style> de mai
+          jos) acolo.
+       5) Salveaza si verifica pagina publicata -- fiecare card ar trebui sa
+          afiseze automat toate specificatiile SKU-ului respectiv.
+
+     Daca un card nu arata nimic: verifica (a) pasul 1 de mai sus a fost
+     facut pentru acel produs, (b) in consola browserului (F12) nu apar
+     erori, (c) tema ta foloseste markup-ul standard Magento pentru carduri
+     de produs (implicit da, inclusiv pentru blocul "Products" din Page
+     Builder) -- daca nu, ajusteaza CONFIG.cardSelector / linkSelector mai
+     jos.
+     ========================================================================== -->
+<script>
+(function () {
+    'use strict';
+
+    var CONFIG = {
+        // Cardurile de produs de pe pagina ale caror specificatii se completeaza
+        cardSelector: 'li.product-item',
+        // Link-ul din card catre pagina proprie a produsului (sursa specificatiilor)
+        linkSelector: 'a.product-item-link, a.product-item-photo',
+        // Elementul inaintea caruia se insereaza lista de specificatii
+        // (daca nu exista, lista se adauga la finalul cardului)
+        insertBeforeSelector: '.product-item-actions, .actions-row',
+        // Etichete care NU se afiseaza chiar daca apar pe pagina produsului
+        // (campuri administrative, nu specificatii utile cumparatorului)
+        excludeLabels: ['sku', 'serie produs', 'marca'],
+        // Cate specificatii se afiseaza per card. Pune un numar (ex. 10)
+        // daca vrei o limita; implicit se afiseaza TOATE.
+        maxSpecs: Infinity,
+        // Titlu mic deasupra listei (pune '' ca sa-l elimini)
+        heading: 'Specificații complete'
+    };
+
+    function normLabel(s) {
+        return s.toLowerCase().replace(/:$/, '').trim();
+    }
+
+    function isExcluded(label) {
+        return CONFIG.excludeLabels.indexOf(normLabel(label)) !== -1;
+    }
+
+    // Citeste tabelul standard Magento de specificatii ("Additional Information")
+    // de pe pagina produsului
+    function parseSpecsFromDoc(doc) {
+        var out = [];
+        var table = doc.querySelector(
+            '#product-attribute-specs-table, ' +
+            'table.additional-attributes, ' +
+            'table.data.table.additional-attributes, ' +
+            '.product.attribute.specs table'
+        );
+        if (table) {
+            table.querySelectorAll('tr').forEach(function (tr) {
+                var th = tr.querySelector('th, .col.label, .label');
+                var td = tr.querySelector('td, .col.data, .data');
+                var label = th ? th.textContent.replace(/\s+/g, ' ').trim() : '';
+                var val = td ? td.textContent.replace(/\s+/g, ' ').trim() : '';
+                if (label && val && !isExcluded(label)) out.push({ label: label, value: val });
+            });
+        }
+        return out;
+    }
+
+    function renderSpecs(card, specs) {
+        if (!specs.length) return;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'auto-specs';
+
+        if (CONFIG.heading) {
+            var h = document.createElement('div');
+            h.className = 'auto-specs-heading';
+            h.textContent = CONFIG.heading;
+            wrap.appendChild(h);
+        }
+
+        var ul = document.createElement('ul');
+        ul.className = 'auto-specs-list';
+        specs.slice(0, CONFIG.maxSpecs).forEach(function (s) {
+            var li = document.createElement('li');
+            li.textContent = s.label + ': ' + s.value;
+            ul.appendChild(li);
+        });
+        wrap.appendChild(ul);
+
+        var before = CONFIG.insertBeforeSelector ? card.querySelector(CONFIG.insertBeforeSelector) : null;
+        if (before) card.insertBefore(wrap, before);
+        else card.appendChild(wrap);
+    }
+
+    function processCard(card) {
+        if (card.getAttribute('data-auto-specs-done') === '1') return;
+        var link = card.querySelector(CONFIG.linkSelector);
+        var url = link && link.getAttribute('href');
+        if (!url) return;
+        card.setAttribute('data-auto-specs-done', '1');
+
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (res) { return res && res.ok ? res.text() : null; })
+            .then(function (html) {
+                if (!html) return;
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                renderSpecs(card, parseSpecsFromDoc(doc));
+            })
+            .catch(function () { /* cardul ramane neschimbat daca fetch-ul esueaza */ });
+    }
+
+    function run() {
+        document.querySelectorAll(CONFIG.cardSelector).forEach(processCard);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+    } else {
+        run();
+    }
+})();
+</script>
+
+<style>
+.auto-specs { margin-top: 12px; padding-top: 12px; border-top: 1px solid #d2d2d7; text-align: left; }
+.auto-specs-heading { font-weight: 600; font-size: 13px; color: #1d1d1f; margin-bottom: 6px; }
+.auto-specs-list { list-style: none; margin: 0; padding: 0; font-size: 13.5px; color: #6e6e73; }
+.auto-specs-list li { margin-bottom: 4px; }
+</style>
