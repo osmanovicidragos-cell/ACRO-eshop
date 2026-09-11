@@ -124,8 +124,27 @@
             .catch(function () { /* cardul ramane neschimbat daca fetch-ul esueaza */ });
     }
 
+    // Unele pagini (ex. SSF-Gallery-Enhancer) construiesc cardurile DINAMIC,
+    // dupa ce pagina s-a incarcat deja (fetch + randare JS). Daca am cauta
+    // cardurile o singura data la load, am ajunge prea devreme si n-am gasi
+    // niciunul. De-aia urmarim continuu pagina cu un MutationObserver si
+    // procesam orice card nou aparut, oricand ar aparea el.
+    function watchForNewCards() {
+        var mo = new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                m.addedNodes.forEach(function (node) {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches && node.matches(CONFIG.cardSelector)) processCard(node);
+                    if (node.querySelectorAll) node.querySelectorAll(CONFIG.cardSelector).forEach(processCard);
+                });
+            });
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
+    }
+
     function run() {
         document.querySelectorAll(CONFIG.cardSelector).forEach(processCard);
+        watchForNewCards();
     }
 
     if (document.readyState === 'loading') {
