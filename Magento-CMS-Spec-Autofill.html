@@ -31,10 +31,12 @@
     'use strict';
 
     var CONFIG = {
-        // Cardurile de produs de pe pagina ale caror specificatii se completeaza
-        cardSelector: 'li.product-item',
+        // Cardurile de produs de pe pagina ale caror specificatii se completeaza.
+        // Include atat markup-ul implicit Magento (li.product-item), cat si
+        // markup-ul cardurilor generate de SSF-Gallery-Enhancer (div.product-card).
+        cardSelector: 'li.product-item, div.product-card',
         // Link-ul din card catre pagina proprie a produsului (sursa specificatiilor)
-        linkSelector: 'a.product-item-link, a.product-item-photo',
+        linkSelector: 'a.product-item-link, a.product-item-photo, a.product-title, a.product-image',
         // Elementul inaintea caruia se insereaza lista de specificatii
         // (daca nu exista, lista se adauga la finalul cardului)
         insertBeforeSelector: '.product-item-actions, .actions-row',
