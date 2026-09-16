@@ -610,11 +610,6 @@
         card.setAttribute('data-ram', p.ram || '');
         card.setAttribute('data-discount', p.pct || 0);
 
-        // Model (etichetă sus de tot pe card, deasupra badge-ului)
-        if (p.model) {
-            card.appendChild(el('div', 'model-tag', p.model));
-        }
-
         // Savings badge (procent automat)
         if (p.hasDiscount) {
             card.appendChild(el('div', 'savings-badge', '−' + p.pct + '%'));
@@ -638,7 +633,7 @@
         aTitle.href = p.url; aTitle.target = '_blank'; aTitle.rel = 'noopener';
         card.appendChild(aTitle);
 
-        // Copilot+ (modelul e deja afișat sus de tot pe card, ca model-tag)
+        // Copilot+
         if (p.copilot) {
             card.appendChild(el('div', 'product-model', 'Copilot+ PC'));
         }
@@ -938,7 +933,7 @@
     border-bottom:2px solid transparent;\n\
     color:var(--ssfx-nav-text);\n\
     padding:16px 2px;\n\
-    font-size:15.5px;\n\
+    font-size:17px;\n\
     font-weight:700;\n\
     letter-spacing:.01em;\n\
     cursor:pointer;\n\
@@ -1032,9 +1027,6 @@
     .ssfx .product-card.in-view{ animation:none; }\n\
 }\n\
 \n\
-/* Model — etichetă sus de tot pe card */\n\
-.ssfx .model-tag{ font-size:12.5px; font-weight:600; color:var(--ssfx-text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }\n\
-\n\
 /* Badge-uri */\n\
 .ssfx .badge{ display:inline-block; font-size:13px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
 .ssfx .badge.badge-red{ background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
@@ -1112,7 +1104,7 @@
     .ssfx .product-grid{ grid-template-columns:1fr; }\n\
     .ssfx .fam-tabs{ justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; gap:22px; padding:0 18px; scrollbar-width:none; }\n\
     .ssfx .fam-tabs::-webkit-scrollbar{ display:none; }\n\
-    .ssfx .fam-btn{ padding:14px 2px; font-size:14.5px; }\n\
+    .ssfx .fam-btn{ padding:14px 2px; font-size:16px; }\n\
     .ssfx .filt{ justify-content:flex-start; padding:6px 16px; }\n\
     .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:8px 0; }\n\
     .ssfx .filt-group:first-child{ border-top:none; }\n\
