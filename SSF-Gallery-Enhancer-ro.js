@@ -70,8 +70,15 @@
             { key: '7000-12000',    label: '7.000–12.000' },
             { key: '12000-99999999', label: '12.000+' }
         ],
-        // Prag: dacă reducerea >= această valoare, cardul primește "is-hero" (cea mai mare reducere din familie)
-        heroMarksTopDiscount: true,
+
+        // Ordinea de afișare a produselor în fiecare familie. Nu ne bazăm pe
+        // ordinea din HTML-ul Magento (widget-ul PageBuilder "Products" are
+        // propria lui sortare, separată de sortarea generală a magazinului,
+        // și poate să nu fie deloc "preț crescător" chiar dacă asta e setat
+        // în altă parte) — sortăm explicit noi, aici.
+        // Valori posibile: 'price-asc' (preț crescător), 'price-desc'
+        // (preț descrescător), 'none' (păstrează ordinea din HTML).
+        sortProducts: 'price-asc',
 
         // Meniul de familii rămâne lipit sub marginea de sus a ferestrei la
         // scroll, ca meniul de pe apple.com. Pune pe false dacă se suprapune
@@ -145,35 +152,7 @@
         // pagina produsului (câmpuri administrative, nu specificații utile
         // pentru cumpărător). Scrie-le cu litere mici, fără ':'. Ca să
         // ascunzi și altele, adaugă-le pur și simplu în listă.
-        specsFromPdpExclude: ['sku', 'serie produs', 'marca'],
-
-        // ------------------------------------------------------------------
-        // SECȚIUNEA "GARANȚIE PERFECTĂ ASUS" (jos de tot pe pagină, 2 rânduri
-        // de carduri, defilabile pe orizontală).
-        // ------------------------------------------------------------------
-        // IMPORTANT — verifică înainte de a te baza pe asta: nu avem nume,
-        // preț sau imagine reale pentru aceste SKU-uri (doar codurile), deci
-        // NU inventăm date. Fiecare card se construiește dintr-un fetch live
-        // al paginii reale a acelui produs (la fel ca la specsFromPdp), și
-        // apare DOAR dacă acel fetch reușește și găsește nume+preț. Un SKU
-        // care nu se găsește e omis tăcut — niciun card cu date inventate.
-        // URL-ul e construit ca <domeniul curent>/<sku-cu-litere-mici>.html,
-        // după tiparul văzut la celelalte produse (ex. m1502ia.html). Nu e
-        // verificat cu certitudine pentru aceste SKU-uri de garanție — dacă
-        // nu apare niciun card, verifică manual URL-ul unui SKU în browser
-        // și ajustează warrantyUrlFor() mai jos dacă tiparul diferă.
-        warrantyTitle: 'Garanție Perfectă ASUS',
-        warrantyProducts: [
-            'ACX11-00960BNV', 'ACX12-002745NV', 'ACX13-021220NR', 'ACCX002-0CPE',
-            'ACX11-001300PF', 'ACX10-004201NX', 'ACX10-004221NX', 'ACX12-002742NX',
-            'ACX12-002742NR', 'ACX12-002011NR', 'ACX14-025500NR', 'ACX12-002742NB',
-            'ACX10-002200NB', 'ACX15-032300NB', 'ACX15-025100NB', 'ACX12-002011NB',
-            'ACX14-013900NB', 'ACX10-004011NR', 'ACX15-032300NR', 'ACX15-039600NR',
-            'ACX10-009311NR', 'ACX15-052800NR', 'ACX15-052700NR', 'ACX11-005510PT',
-            'ACX11-005520PT', 'ACX11-00491HPF', 'ACX14-013920NX', 'ACX10-004201NB',
-            'ACCX001-J3N0', 'ACX13-00691BNB', 'ACX13-00690BNR', 'ACX13-007003NX',
-            'ACX13-007400PT', 'ACX13-000783PF'
-        ]
+        specsFromPdpExclude: ['sku', 'serie produs', 'marca']
     };
 
     /* ---------------------------------------------------------------------- */
@@ -567,6 +546,19 @@
         };
     }
 
+    // Sortează o listă de produse conform CFG.sortProducts. Produsele fără
+    // preț citit (finalAmt null) rămân la coadă, indiferent de direcție.
+    function sortCards(cards) {
+        if (CFG.sortProducts === 'none') return cards;
+        var dir = CFG.sortProducts === 'price-desc' ? -1 : 1;
+        return cards.slice().sort(function (a, b) {
+            if (a.finalAmt == null && b.finalAmt == null) return 0;
+            if (a.finalAmt == null) return 1;
+            if (b.finalAmt == null) return -1;
+            return (a.finalAmt - b.finalAmt) * dir;
+        });
+    }
+
     /* ---------------------------------------------------------------------- */
     /*  COLECTAREA TUTUROR PRODUSELOR PE TAB-URI (familii)                     */
     /* ---------------------------------------------------------------------- */
@@ -589,7 +581,7 @@
                     var p = parseProduct(li, name);
                     if (p) cards.push(p);
                 });
-                if (cards.length) families.push({ name: name, cards: cards });
+                if (cards.length) families.push({ name: name, cards: sortCards(cards) });
             });
         }
 
@@ -601,99 +593,17 @@
                 var p = parseProduct(li, 'Toate modelele');
                 if (p) cards2.push(p);
             });
-            if (cards2.length) families.push({ name: 'Toate modelele', cards: cards2 });
+            if (cards2.length) families.push({ name: 'Toate modelele', cards: sortCards(cards2) });
         }
 
         return families;
     }
 
     /* ---------------------------------------------------------------------- */
-    /*  SECȚIUNEA "GARANȚIE PERFECTĂ ASUS" (vezi CFG.warrantyProducts)         */
-    /* ---------------------------------------------------------------------- */
-
-    // URL-ul paginii de produs pentru un SKU de garanție. Construit după
-    // tiparul văzut la restul produselor (<domeniu>/<sku-mic>.html) — dacă
-    // nu se potrivește pentru aceste SKU-uri, ajustează AICI.
-    function warrantyUrlFor(sku) {
-        return window.location.origin + '/' + sku.toLowerCase() + '.html';
-    }
-
-    // Citește nume + preț + imagine dintr-o pagină reală de produs. Întoarce
-    // null dacă nu găsește cel puțin nume și preț (nu construim un card cu
-    // date pe jumătate lipsă).
-    function parseWarrantyProductFromDoc(doc) {
-        var nameEl = doc.querySelector('.page-title span[itemprop="name"], .page-title, h1.product-name, h1');
-        var name = nameEl ? nameEl.textContent.replace(/\s+/g, ' ').trim() : '';
-
-        var priceEl = doc.querySelector(
-            '.product-info-price [data-price-type="finalPrice"] .price, ' +
-            '.product-info-main .price-box .price, ' +
-            '[data-price-type="finalPrice"] .price, ' +
-            '.price-box .price'
-        );
-        var price = priceEl ? priceEl.textContent.replace(/\s+/g, ' ').trim() : '';
-
-        var img = '';
-        var ogImg = doc.querySelector('meta[property="og:image"]');
-        if (ogImg) img = ogImg.getAttribute('content') || '';
-        if (!img) {
-            var imgTag = doc.querySelector('.gallery-placeholder img, .fotorama__img, .product.media img');
-            if (imgTag) img = imgTag.getAttribute('src') || '';
-        }
-
-        if (!name || !price) return null;
-        return { name: name, price: price, img: img };
-    }
-
-    function buildWarrantyCard(data, url) {
-        var card = el('a', 'warranty-card');
-        card.href = url; card.target = '_blank'; card.rel = 'noopener';
-        if (data.img) {
-            var img = el('img');
-            img.src = data.img; img.alt = data.name; img.loading = 'lazy';
-            card.appendChild(img);
-        }
-        card.appendChild(el('div', 'warranty-name', data.name));
-        card.appendChild(el('div', 'warranty-price', data.price));
-        card.appendChild(el('span', 'warranty-buy', CFG.buyText));
-        return card;
-    }
-
-    // Construiește secțiunea și pornește câte un fetch pentru fiecare SKU din
-    // CFG.warrantyProducts. Cardurile apar pe măsură ce fiecare fetch reușește
-    // — un SKU care eșuează sau nu are nume+preț e omis, fără eroare vizibilă.
-    // Întoarce null dacă lista e goală sau browserul nu suportă fetch/DOMParser.
-    function buildWarrantySection() {
-        if (!CFG.warrantyProducts || !CFG.warrantyProducts.length) return null;
-        if (typeof fetch !== 'function' || typeof DOMParser === 'undefined') return null;
-
-        var section = el('div', 'warranty-section');
-        section.appendChild(el('div', 'warranty-title', CFG.warrantyTitle));
-        var grid = el('div', 'warranty-grid');
-        section.appendChild(grid);
-
-        CFG.warrantyProducts.forEach(function (sku) {
-            var url = warrantyUrlFor(sku);
-            fetch(url, { credentials: 'same-origin' })
-                .then(function (res) { return res && res.ok ? res.text() : null; })
-                .then(function (html) {
-                    if (!html) return;
-                    var doc = new DOMParser().parseFromString(html, 'text/html');
-                    var data = parseWarrantyProductFromDoc(doc);
-                    if (!data) return;
-                    grid.appendChild(buildWarrantyCard(data, url));
-                })
-                .catch(function () { /* SKU indisponibil sau URL greșit — omis tăcut */ });
-        });
-
-        return section;
-    }
-
-    /* ---------------------------------------------------------------------- */
     /*  CONSTRUIREA UNUI CARD                                                  */
     /* ---------------------------------------------------------------------- */
-    function buildCard(p, isHero) {
-        var card = el('div', 'product-card' + (isHero ? ' is-hero' : ''));
+    function buildCard(p) {
+        var card = el('div', 'product-card');
         card.setAttribute('data-family', p.family);
         card.setAttribute('data-category', p.brand || '');
         card.setAttribute('data-price', p.finalAmt != null ? Math.round(p.finalAmt) : '');
@@ -703,11 +613,6 @@
         // Model (etichetă sus de tot pe card, deasupra badge-ului)
         if (p.model) {
             card.appendChild(el('div', 'model-tag', p.model));
-        }
-
-        // Ribbon (doar hero)
-        if (isHero && p.hasDiscount) {
-            card.appendChild(el('span', 'bestseller-ribbon', 'Cea mai mare reducere'));
         }
 
         // Savings badge (procent automat)
@@ -851,17 +756,13 @@
         root.appendChild(filt);
 
         // --- Grid ---
+        // Cardurile se afișează exact în ordinea în care apar produsele în
+        // Magento (fam.cards e deja în ordinea din DOM) — nu reordonăm și nu
+        // evidențiem vreun produs ca fiind "cel mai bun".
         var grid = el('div', 'product-grid');
         families.forEach(function (fam) {
-            // hero = cardul cu cea mai mare reducere din familie
-            var heroIdx = -1, heroPct = 0;
-            if (CFG.heroMarksTopDiscount) {
-                fam.cards.forEach(function (c, idx) {
-                    if (c.hasDiscount && c.pct > heroPct) { heroPct = c.pct; heroIdx = idx; }
-                });
-            }
-            fam.cards.forEach(function (c, idx) {
-                grid.appendChild(buildCard(c, idx === heroIdx));
+            fam.cards.forEach(function (c) {
+                grid.appendChild(buildCard(c));
             });
         });
         var noRes = el('div', 'no-results', 'Nu există modele care să corespundă filtrelor selectate.');
@@ -938,11 +839,6 @@
 
         apply();
         setupRevealAnimation(grid);
-
-        // --- Secțiunea "Garanție Perfectă ASUS", jos de tot ---
-        var warrantySection = buildWarrantySection();
-        if (warrantySection) root.appendChild(warrantySection);
-
         return root;
     }
 
@@ -1142,7 +1038,6 @@
 /* Badge-uri */\n\
 .ssfx .badge{ display:inline-block; font-size:13px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
 .ssfx .badge.badge-red{ background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
-.ssfx .product-card.is-hero .badge.badge-red{ background:var(--ssfx-text); color:#fff; }\n\
 .ssfx .badge.badge-copilot{ background:var(--ssfx-badge-bg); color:var(--ssfx-accent); }\n\
 .ssfx .savings-badge{\n\
     position:absolute;\n\
@@ -1156,16 +1051,6 @@
     border-radius:var(--ssfx-radius-chip);\n\
     z-index:2;\n\
     line-height:1;\n\
-}\n\
-.ssfx .product-card.is-hero .savings-badge{ background:var(--ssfx-accent); }\n\
-.ssfx .bestseller-ribbon{\n\
-    font-size:13px;\n\
-    color:var(--ssfx-accent);\n\
-    font-weight:600;\n\
-    letter-spacing:.02em;\n\
-    text-transform:uppercase;\n\
-    align-self:flex-start;\n\
-    margin-bottom:12px;\n\
 }\n\
 \n\
 /* Imagine / titlu / model / cpu */\n\
@@ -1221,39 +1106,6 @@
 \n\
 .ssfx .no-results{ grid-column:1/-1; text-align:center; padding:60px 20px; font-size:17px; color:var(--ssfx-text-muted); }\n\
 \n\
-/* Garanție Perfectă ASUS — 2 rânduri de carduri, defilabile pe orizontală */\n\
-.ssfx .warranty-section{ max-width:1200px; margin:56px auto 0; }\n\
-.ssfx .warranty-title{ font-size:22px; font-weight:700; text-align:center; margin:0 0 20px; letter-spacing:-.01em; }\n\
-.ssfx .warranty-grid{\n\
-    display:grid;\n\
-    grid-auto-flow:column;\n\
-    grid-template-rows:repeat(2,1fr);\n\
-    grid-auto-columns:180px;\n\
-    gap:14px;\n\
-    overflow-x:auto;\n\
-    padding:2px 2px 14px;\n\
-    scroll-snap-type:x proximity;\n\
-}\n\
-.ssfx .warranty-card{\n\
-    scroll-snap-align:start;\n\
-    background:var(--ssfx-card-bg);\n\
-    border:1px solid var(--ssfx-border);\n\
-    border-radius:16px;\n\
-    padding:14px;\n\
-    display:flex;\n\
-    flex-direction:column;\n\
-    align-items:center;\n\
-    text-align:center;\n\
-    text-decoration:none;\n\
-    color:inherit;\n\
-    transition:var(--ssfx-transition);\n\
-}\n\
-.ssfx .warranty-card:hover{ box-shadow:0 12px 26px rgba(0,0,0,.08); transform:translateY(-3px); border-color:transparent; }\n\
-.ssfx .warranty-card img{ width:100%; height:90px; object-fit:contain; margin-bottom:10px; }\n\
-.ssfx .warranty-name{ font-size:13px; font-weight:600; line-height:1.3; margin-bottom:6px; }\n\
-.ssfx .warranty-price{ font-size:15px; font-weight:700; color:var(--ssfx-text); margin-bottom:10px; }\n\
-.ssfx .warranty-buy{ margin-top:auto; width:100%; text-align:center; padding:7px 10px; border-radius:var(--ssfx-radius-button); font-weight:500; font-size:13px; background:var(--ssfx-accent); color:#fff; }\n\
-\n\
 /* Responsive */\n\
 @media(max-width:767px){\n\
     .ssfx{ padding:18px 16px 48px; }\n\
@@ -1265,9 +1117,6 @@
     .ssfx .filt-group{ width:100%; border-left:none; border-top:1px solid var(--ssfx-border); padding:8px 0; }\n\
     .ssfx .filt-group:first-child{ border-top:none; }\n\
     .ssfx .filt-reset{ margin:6px 0 4px; }\n\
-    .ssfx .warranty-section{ margin-top:40px; }\n\
-    .ssfx .warranty-title{ font-size:19px; }\n\
-    .ssfx .warranty-grid{ grid-auto-columns:150px; gap:10px; }\n\
 }\n\
 ';
 
