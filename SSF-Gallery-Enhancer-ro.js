@@ -71,6 +71,15 @@
             { key: '12000-99999999', label: '12.000+' }
         ],
 
+        // Ordinea de afișare a produselor în fiecare familie. Nu ne bazăm pe
+        // ordinea din HTML-ul Magento (widget-ul PageBuilder "Products" are
+        // propria lui sortare, separată de sortarea generală a magazinului,
+        // și poate să nu fie deloc "preț crescător" chiar dacă asta e setat
+        // în altă parte) — sortăm explicit noi, aici.
+        // Valori posibile: 'price-asc' (preț crescător), 'price-desc'
+        // (preț descrescător), 'none' (păstrează ordinea din HTML).
+        sortProducts: 'price-asc',
+
         // Meniul de familii rămâne lipit sub marginea de sus a ferestrei la
         // scroll, ca meniul de pe apple.com. Pune pe false dacă se suprapune
         // cu header-ul propriu al paginii.
@@ -537,6 +546,19 @@
         };
     }
 
+    // Sortează o listă de produse conform CFG.sortProducts. Produsele fără
+    // preț citit (finalAmt null) rămân la coadă, indiferent de direcție.
+    function sortCards(cards) {
+        if (CFG.sortProducts === 'none') return cards;
+        var dir = CFG.sortProducts === 'price-desc' ? -1 : 1;
+        return cards.slice().sort(function (a, b) {
+            if (a.finalAmt == null && b.finalAmt == null) return 0;
+            if (a.finalAmt == null) return 1;
+            if (b.finalAmt == null) return -1;
+            return (a.finalAmt - b.finalAmt) * dir;
+        });
+    }
+
     /* ---------------------------------------------------------------------- */
     /*  COLECTAREA TUTUROR PRODUSELOR PE TAB-URI (familii)                     */
     /* ---------------------------------------------------------------------- */
@@ -559,7 +581,7 @@
                     var p = parseProduct(li, name);
                     if (p) cards.push(p);
                 });
-                if (cards.length) families.push({ name: name, cards: cards });
+                if (cards.length) families.push({ name: name, cards: sortCards(cards) });
             });
         }
 
@@ -571,7 +593,7 @@
                 var p = parseProduct(li, 'Toate modelele');
                 if (p) cards2.push(p);
             });
-            if (cards2.length) families.push({ name: 'Toate modelele', cards: cards2 });
+            if (cards2.length) families.push({ name: 'Toate modelele', cards: sortCards(cards2) });
         }
 
         return families;
