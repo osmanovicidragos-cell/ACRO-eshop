@@ -70,8 +70,6 @@
             { key: '7000-12000',    label: '7.000–12.000' },
             { key: '12000-99999999', label: '12.000+' }
         ],
-        // Prag: dacă reducerea >= această valoare, cardul primește "is-hero" (cea mai mare reducere din familie)
-        heroMarksTopDiscount: true,
 
         // Meniul de familii rămâne lipit sub marginea de sus a ferestrei la
         // scroll, ca meniul de pe apple.com. Pune pe false dacă se suprapune
@@ -582,8 +580,8 @@
     /* ---------------------------------------------------------------------- */
     /*  CONSTRUIREA UNUI CARD                                                  */
     /* ---------------------------------------------------------------------- */
-    function buildCard(p, isHero) {
-        var card = el('div', 'product-card' + (isHero ? ' is-hero' : ''));
+    function buildCard(p) {
+        var card = el('div', 'product-card');
         card.setAttribute('data-family', p.family);
         card.setAttribute('data-category', p.brand || '');
         card.setAttribute('data-price', p.finalAmt != null ? Math.round(p.finalAmt) : '');
@@ -593,11 +591,6 @@
         // Model (etichetă sus de tot pe card, deasupra badge-ului)
         if (p.model) {
             card.appendChild(el('div', 'model-tag', p.model));
-        }
-
-        // Ribbon (doar hero)
-        if (isHero && p.hasDiscount) {
-            card.appendChild(el('span', 'bestseller-ribbon', 'Cea mai mare reducere'));
         }
 
         // Savings badge (procent automat)
@@ -741,17 +734,13 @@
         root.appendChild(filt);
 
         // --- Grid ---
+        // Cardurile se afișează exact în ordinea în care apar produsele în
+        // Magento (fam.cards e deja în ordinea din DOM) — nu reordonăm și nu
+        // evidențiem vreun produs ca fiind "cel mai bun".
         var grid = el('div', 'product-grid');
         families.forEach(function (fam) {
-            // hero = cardul cu cea mai mare reducere din familie
-            var heroIdx = -1, heroPct = 0;
-            if (CFG.heroMarksTopDiscount) {
-                fam.cards.forEach(function (c, idx) {
-                    if (c.hasDiscount && c.pct > heroPct) { heroPct = c.pct; heroIdx = idx; }
-                });
-            }
-            fam.cards.forEach(function (c, idx) {
-                grid.appendChild(buildCard(c, idx === heroIdx));
+            fam.cards.forEach(function (c) {
+                grid.appendChild(buildCard(c));
             });
         });
         var noRes = el('div', 'no-results', 'Nu există modele care să corespundă filtrelor selectate.');
@@ -1027,7 +1016,6 @@
 /* Badge-uri */\n\
 .ssfx .badge{ display:inline-block; font-size:13px; font-weight:600; padding:5px 12px; border-radius:var(--ssfx-radius-chip); align-self:flex-start; margin-bottom:16px; letter-spacing:.01em; }\n\
 .ssfx .badge.badge-red{ background:var(--ssfx-badge-bg); color:var(--ssfx-text-muted); }\n\
-.ssfx .product-card.is-hero .badge.badge-red{ background:var(--ssfx-text); color:#fff; }\n\
 .ssfx .badge.badge-copilot{ background:var(--ssfx-badge-bg); color:var(--ssfx-accent); }\n\
 .ssfx .savings-badge{\n\
     position:absolute;\n\
@@ -1041,16 +1029,6 @@
     border-radius:var(--ssfx-radius-chip);\n\
     z-index:2;\n\
     line-height:1;\n\
-}\n\
-.ssfx .product-card.is-hero .savings-badge{ background:var(--ssfx-accent); }\n\
-.ssfx .bestseller-ribbon{\n\
-    font-size:13px;\n\
-    color:var(--ssfx-accent);\n\
-    font-weight:600;\n\
-    letter-spacing:.02em;\n\
-    text-transform:uppercase;\n\
-    align-self:flex-start;\n\
-    margin-bottom:12px;\n\
 }\n\
 \n\
 /* Imagine / titlu / model / cpu */\n\
